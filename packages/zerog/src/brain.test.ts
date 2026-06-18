@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { DecisionContext } from "@civ/brain";
-import { ZeroGComputeBrain, tryParseDecision, type Chat, type ChatMessage, type ChatResult } from "./brain";
+import { ZeroGComputeBrain, buildMessages, tryParseDecision, type Chat, type ChatMessage, type ChatResult } from "./brain";
 import { ZeroGBrainError } from "./errors";
 
 function ctxOf(): DecisionContext {
@@ -76,5 +76,27 @@ describe("ZeroGComputeBrain.decide", () => {
   it("throws ZeroGBrainError when still invalid after repair", async () => {
     const brain = new ZeroGComputeBrain(new FakeChat(["garbage", "still garbage"]), "llama-x");
     await expect(brain.decide(ctxOf())).rejects.toBeInstanceOf(ZeroGBrainError);
+  });
+  it("includes the prior bad output as an assistant turn on the repair call", async () => {
+    let lastMessages: ChatMessage[] = [];
+    const chat: Chat = {
+      complete: async (messages) => {
+        lastMessages = messages;
+        const content = messages.length > 2 ? '{"action":"work"}' : "garbage";
+        return { content, provider: "0xprov", model: "llama-x", verified: true };
+      },
+    };
+    await new ZeroGComputeBrain(chat, "llama-x").decide(ctxOf());
+    expect(lastMessages.some((m) => m.role === "assistant" && m.content === "garbage")).toBe(true);
+  });
+});
+
+describe("buildMessages", () => {
+  it("emits a system+user pair carrying the allowed actions and the retrieved ids", () => {
+    const msgs = buildMessages(ctxOf());
+    expect(msgs.map((m) => m.role)).toEqual(["system", "user"]);
+    expect(msgs[0].content).toContain("start_company");
+    expect(msgs[1].content).toContain("[m1]");
+    expect(msgs[1].content).toContain("[b1]");
   });
 });

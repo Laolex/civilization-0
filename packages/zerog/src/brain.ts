@@ -2,7 +2,7 @@ import { type ActionType } from "@civ/shared";
 import type { BrainProvider, DecisionContext, DecisionResult } from "@civ/brain";
 import { ZeroGBrainError } from "./errors";
 
-export interface ChatMessage { role: "system" | "user"; content: string; }
+export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; }
 export interface ChatResult {
   content: string; provider: string; model: string;
   requestId?: string; verified?: boolean; verification?: unknown;
@@ -84,8 +84,9 @@ export class ZeroGComputeBrain implements BrainProvider {
     let result = await this.chat.complete(messages);
     let decision = tryParseDecision(result.content, ctx);
     if (!decision) {
+      const badOutput: ChatMessage = { role: "assistant", content: result.content };
       const repair: ChatMessage = { role: "user", content: "Your previous output was not valid JSON matching the schema. Return ONLY the JSON object." };
-      result = await this.chat.complete([...messages, repair]);
+      result = await this.chat.complete([...messages, badOutput, repair]);
       decision = tryParseDecision(result.content, ctx);
     }
     if (!decision) throw new ZeroGBrainError("0G Compute returned no valid decision after one repair attempt");
