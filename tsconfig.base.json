@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@civ/shared": ["packages/shared/src"],
+      "@civ/storage": ["packages/storage/src"],
+      "@civ/brain": ["packages/brain/src"],
+      "@civ/store": ["packages/store/src"],
+      "@civ/memory": ["packages/memory/src"],
+      "@civ/beliefs": ["packages/beliefs/src"],
+      "@civ/explainability": ["packages/explainability/src"],
+      "@civ/engine": ["packages/engine/src"]
+    }
+  }
+}
