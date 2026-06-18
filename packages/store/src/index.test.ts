@@ -27,4 +27,41 @@ describe("InMemoryWorldStore", () => {
     s.updateEventArchive("e1", "0xroot", "0xtx");
     expect(s.getEvent("e1")?.zgRootHash).toBe("0xroot");
   });
+
+  it("upsertRelationship replaces the row for the same (citizenId, otherId) pair", () => {
+    const s = new InMemoryWorldStore();
+    s.upsertRelationship({ citizenId: "ada", otherId: "bob", trust: 10, friendship: 5, influence: 1 });
+    s.upsertRelationship({ citizenId: "ada", otherId: "bob", trust: 80, friendship: 60, influence: 9 });
+    const rels = s.getRelationships("ada");
+    expect(rels).toHaveLength(1);
+    expect(rels[0].trust).toBe(80);
+  });
+
+  it("updates archive hashes on memories and traces", () => {
+    const s = new InMemoryWorldStore();
+    s.addMemory({ id: "m1", citizenId: "ada", day: 1, type: "event", importance: 8, summary: "Lost job", embedding: [1, 0] });
+    s.updateMemoryArchive("m1", "0xmroot", "0xmtx");
+    expect(s.getMemories("ada")[0].zgRootHash).toBe("0xmroot");
+    expect(s.getMemories("ada")[0].zgTxHash).toBe("0xmtx");
+
+    s.addTrace({ id: "t1", decisionId: "d1", trace: {
+      decision: "start_company", goal: null, retrievedMemories: [], beliefs: [], reasoning: "", eventId: "e1" } });
+    s.updateTraceArchive("t1", "0xtroot", "0xttx");
+    expect(s.getTrace("d1")?.zgRootHash).toBe("0xtroot");
+  });
+
+  it("getActiveGoal ignores inactive goals", () => {
+    const s = new InMemoryWorldStore();
+    s.upsertGoal({ id: "g1", citizenId: "ada", kind: "career", description: "x", progress: 0, active: false });
+    expect(s.getActiveGoal("ada")).toBeUndefined();
+    s.upsertGoal({ id: "g2", citizenId: "ada", kind: "career", description: "y", progress: 0, active: true });
+    expect(s.getActiveGoal("ada")?.id).toBe("g2");
+  });
+
+  it("round-trips world state", () => {
+    const s = new InMemoryWorldStore();
+    expect(s.getWorldState().day).toBe(0);
+    s.setWorldState({ day: 5, economy: { gdp: 100 }, headline: "Boom" });
+    expect(s.getWorldState()).toEqual({ day: 5, economy: { gdp: 100 }, headline: "Boom" });
+  });
 });
