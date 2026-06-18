@@ -77,4 +77,40 @@ describe("runCitizenTick", () => {
     await runCitizenTick(deps, "ada");
     expect(storage.calls.some((c) => c.key.startsWith("trace/"))).toBe(true);
   });
+
+  it("records only the brain-weighted inputs as the cause, excluding merely-retrieved ones", async () => {
+    const store = new InMemoryWorldStore();
+    const embedder = new FakeEmbedder();
+    store.upsertCitizen({ id: "ada", name: "Ada", occupation: "Engineer", age: 29,
+      traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
+      wealth: 0, reputation: 50, tier: 3, createdDay: 0 });
+    store.upsertGoal({ id: "g1", citizenId: "ada", kind: "wealth", description: "funding for a company in a recession", progress: 0.1, active: true });
+    // Two memories — both are retrieved into the decision context...
+    store.addMemory({ id: "m1", citizenId: "ada", day: 1, type: "event", importance: 8, summary: "lost job during recession", embedding: embedder.embed("lost job during recession") });
+    store.addMemory({ id: "m2", citizenId: "ada", day: 1, type: "event", importance: 8, summary: "marcus offered funding for a company", embedding: embedder.embed("marcus offered funding for a company") });
+    store.setWorldState({ day: 5, economy: {}, headline: "recession" });
+
+    let n = 0;
+    // ...but the brain weights ONLY m2, and weights no beliefs at all.
+    const brain = new FakeBrain(() => ({
+      action: "work", targetId: null,
+      reasoning: "only the funding memory drove this",
+      memoryWeights: { m2: 1 },
+      beliefWeights: {},
+    }));
+    const storage = new FakeStorage();
+    const deps: TickDeps = {
+      store, embedder, memoryIndex: new MemoryIndex(store, embedder),
+      reviser: new RuleBasedBeliefReviser(), brain, storage,
+      explain: new ExplainabilityService(storage),
+      clock: { day: 5 }, idgen: () => `id${++n}`,
+    };
+    const result = await runCitizenTick(deps, "ada");
+
+    const dmIds = store.getDecisionMemories(result.decision.id).map((r) => r.memoryId);
+    expect(dmIds).toContain("m2");      // the weighted memory is recorded as the cause
+    expect(dmIds).not.toContain("m1");  // a merely-retrieved memory is NOT recorded as cause
+    // No belief drove the decision, so the belief join is legitimately empty.
+    expect(store.getDecisionBeliefs(result.decision.id)).toHaveLength(0);
+  });
 });

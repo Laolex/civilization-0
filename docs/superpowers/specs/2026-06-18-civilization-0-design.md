@@ -83,7 +83,7 @@ world_state(day, economy jsonb, headline, updated_at)
 ```
 
 ### Why these tables matter
-- **`decision_memories` + `decision_beliefs`** are populated **at decision time** from the exact memories/beliefs retrieved into the prompt — never inferred later. The chain exists by construction.
+- **`decision_memories` + `decision_beliefs`** are populated **at decision time** from the exact memories/beliefs that drove the decision (the brain's weight maps) — never inferred later. They record *what actually drove the decision*, not merely what was retrieved: a retrieved-but-unweighted memory is deliberately excluded. `decision_beliefs` may legitimately be empty when no belief drove a decision. The chain exists by construction.
 - **`beliefs`** insert the worldview layer: `Memory → Belief → Decision`. Agents accumulate convictions (e.g. *"Marcus is trustworthy", confidence 0.92, from memories [11,44]*) instead of re-evaluating raw memories every tick → coherent long-run behavior.
 - **`brain_provider/model`** on every decision powers the *"Reasoned by 0G Compute"* badge.
 - **`decision_traces`** archives the *reasoning itself* to 0G — the thing judges actually care about ("why?"), not just the event.
@@ -179,7 +179,7 @@ Keeps token/compute spend bounded as population grows.
 ## 9. Testing
 
 TDD on the engine using **FakeBrain** (scripted deterministic decisions) + **FakeStorage** (in-memory hashes). Core assertions:
-- A decision always produces `decision_memories` **and** `decision_beliefs` rows referencing the retrieved inputs.
+- A decision records the inputs that drove it: `decision_memories` for every brain-weighted memory and `decision_beliefs` for every brain-weighted belief (the belief join may be empty when no belief drove the decision). Retrieved-but-unweighted inputs are excluded.
 - A decision always produces an archived `DecisionTrace` with a hash.
 - A major event always gets archived with a hash.
 - Importance thresholding stores/drops memories correctly.
