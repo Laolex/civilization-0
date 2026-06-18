@@ -54,13 +54,12 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
     citizen, goal, memories, beliefs, relationships, worldState, availableActions: ALL_ACTIONS,
   });
 
-  // 5. Execute -> event
+  // 5. Build the event (written to the store after its causal decision, below).
   const decisionId = idgen();
   const event: WorldEvent = {
     id: idgen(), day: clock.day, type: result.action, actorId: citizenId,
     targetId: result.targetId, decisionId, payload: {},
   };
-  store.addEvent(event);
 
   // 6. Record causality
   const decision: Decision = {
@@ -78,6 +77,9 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
     .map((b) => ({ decisionId, beliefId: b.id, weight: result.beliefWeights[b.id] }));
   store.addDecisionMemories(dm);
   store.addDecisionBeliefs(db);
+  // Write the event only after its causal decision + joins exist, so no observer
+  // can ever see an event without the decision that produced it.
+  store.addEvent(event);
 
   // 7. Build + archive trace
   const usedBeliefs = beliefs.filter((b) => b.id in result.beliefWeights);
@@ -100,14 +102,14 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
     store.addMemory(storedMemory);
   }
 
-  // 9. Belief revision (toward the action target)
+  // 9. Belief revision (toward the action target). Action targets are citizens,
+  // so we revise toward the citizen's display name; the raw id is only a
+  // fallback for an unknown/non-citizen target.
   if (storedMemory && result.targetId) {
     const target = store.getCitizen(result.targetId);
-    const rawName = result.targetId;
-    const capitalizedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
     const rev = reviser.revise({
       citizenId, newMemory: storedMemory, existing: store.getBeliefs(citizenId),
-      targetName: target?.name ?? capitalizedName, polarity: result.action === "betray" ? -1 : 1,
+      targetName: target?.name ?? result.targetId, polarity: result.action === "betray" ? -1 : 1,
       day: clock.day, idgen,
     });
     for (const b of [...rev.created, ...rev.updated]) store.upsertBelief(b);

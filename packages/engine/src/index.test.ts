@@ -13,6 +13,10 @@ function setup() {
   store.upsertCitizen({ id: "ada", name: "Ada", occupation: "Engineer", age: 29,
     traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
     wealth: 0, reputation: 50, tier: 3, createdDay: 0 });
+  // The action target is a real citizen, so belief revision uses target.name ("Marcus").
+  store.upsertCitizen({ id: "marcus", name: "Marcus", occupation: "Investor", age: 41,
+    traits: { ambition: 70, empathy: 60, loyalty: 65, curiosity: 50, discipline: 70, riskTolerance: 60 },
+    wealth: 100000, reputation: 70, tier: 2, createdDay: 0 });
   store.upsertGoal({ id: "g1", citizenId: "ada", kind: "wealth", description: "financial independence", progress: 0.1, active: true });
   store.addMemory({ id: "m1", citizenId: "ada", day: 1, type: "event", importance: 8, summary: "lost job during recession", embedding: embedder.embed("lost job during recession") });
   store.upsertBelief({ id: "b1", citizenId: "ada", statement: "Marcus is trustworthy", confidence: 0.7, sourceMemoryIds: ["m0"], updatedDay: 2 });
