@@ -78,6 +78,19 @@ describe("runCitizenTick", () => {
     expect(storage.calls.some((c) => c.key.startsWith("trace/"))).toBe(true);
   });
 
+  it("propagates brain execution meta onto the decision and the archived trace", async () => {
+    const { store, deps } = setup();
+    // wrap the brain to return meta
+    const base = deps.brain;
+    deps.brain = {
+      name: base.name, model: base.model,
+      decide: async (c) => ({ ...(await base.decide(c)), meta: { provider: "0xprov", model: "llama-x", verified: true } }),
+    };
+    const result = await runCitizenTick(deps, "ada");
+    expect(result.decision.meta?.provider).toBe("0xprov");
+    expect(store.getTrace(result.decision.id)?.trace.meta?.verified).toBe(true);
+  });
+
   it("records only the brain-weighted inputs as the cause, excluding merely-retrieved ones", async () => {
     const store = new InMemoryWorldStore();
     const embedder = new FakeEmbedder();

@@ -65,7 +65,7 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   const decision: Decision = {
     id: decisionId, citizenId, goalId: goal?.id ?? null, day: clock.day,
     reasoning: result.reasoning, action: result.action, targetId: result.targetId,
-    brainProvider: brain.name, brainModel: brain.model,
+    brainProvider: brain.name, brainModel: brain.model, meta: result.meta,
   };
   store.addDecision(decision);
 

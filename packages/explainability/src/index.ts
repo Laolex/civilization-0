@@ -25,6 +25,7 @@ export class ExplainabilityService {
         beliefs: beliefs.map((b) => b.statement),
         reasoning: decision.reasoning,
         eventId: event.id,
+        meta: decision.meta,
       },
     };
     const res = await this.storage.archive(`trace/${decision.id}`, trace.trace);
