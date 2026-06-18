@@ -23,6 +23,8 @@ describe("ZeroGStorage", () => {
   it("wraps uploader failures in ZeroGStorageError", async () => {
     const up = new FakeUploader(async () => { throw new Error("net down"); });
     const s = new ZeroGStorage(up);
-    await expect(s.archive("k", {})).rejects.toBeInstanceOf(ZeroGStorageError);
+    const err = await s.archive("k", {}).catch((e) => e);
+    expect(err).toBeInstanceOf(ZeroGStorageError);
+    expect((err.cause as Error).message).toBe("net down");
   });
 });
