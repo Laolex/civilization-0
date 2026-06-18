@@ -8,7 +8,8 @@ describe("loadZeroGConfig", () => {
     expect(c.privateKey).toBe("0xabc");
     expect(c.evmRpc).toBe("https://evmrpc-testnet.0g.ai");
     expect(c.storageIndexer).toBe("https://indexer-storage-testnet-turbo.0g.ai");
-    expect(c.fund.deposit).toBeGreaterThan(0);
+    expect(c.fund.deposit).toBe(10);
+    expect(c.fund.transfer).toBe(10n ** 18n);
   });
   it("throws when the private key is missing", () => {
     expect(() => loadZeroGConfig({})).toThrow(/ZG_PRIVATE_KEY/);
@@ -17,8 +18,10 @@ describe("loadZeroGConfig", () => {
 
 describe("errors", () => {
   it("are named and carry a cause", () => {
-    const e = new ZeroGStorageError("boom", { cause: new Error("inner") });
+    const cause = new Error("inner");
+    const e = new ZeroGStorageError("boom", { cause });
     expect(e.name).toBe("ZeroGStorageError");
+    expect(e.cause).toBe(cause);
     expect(new ZeroGBrainError("x").name).toBe("ZeroGBrainError");
   });
 });
