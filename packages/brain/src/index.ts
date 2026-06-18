@@ -1,6 +1,4 @@
-import type {
-  ActionType, Belief, Citizen, Goal, Memory, Relationship, WorldState,
-} from "@civ/shared";
+import type { ActionType, Belief, Citizen, ExecutionMeta, Goal, Memory, Relationship, WorldState } from "@civ/shared";
 
 export interface DecisionContext {
   citizen: Citizen;
@@ -18,6 +16,7 @@ export interface DecisionResult {
   reasoning: string;
   memoryWeights: Record<string, number>;
   beliefWeights: Record<string, number>;
+  meta?: ExecutionMeta;
 }
 
 export interface BrainProvider {

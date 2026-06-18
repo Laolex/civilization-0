@@ -27,4 +27,14 @@ describe("FakeBrain", () => {
     expect(d.memoryWeights["m1"]).toBe(1);
     expect(d.beliefWeights["b1"]).toBe(0.9);
   });
+
+  it("a DecisionResult can carry execution meta", async () => {
+    const brain = new FakeBrain((c) => ({
+      action: "work", targetId: null, reasoning: "r",
+      memoryWeights: {}, beliefWeights: {},
+      meta: { provider: "0xp", model: "m", verified: true },
+    }));
+    const d = await brain.decide(ctx);
+    expect(d.meta?.verified).toBe(true);
+  });
 });
