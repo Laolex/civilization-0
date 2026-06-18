@@ -1,0 +1,16 @@
+{
+  "name": "@civ/zerog",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "1.2.10",
+    "@0gfoundation/0g-compute-ts-sdk": "0.8.4",
+    "ethers": "^6"
+  },
+  "devDependencies": {
+    "dotenv": "^16",
+    "tsx": "^4"
+  }
+}

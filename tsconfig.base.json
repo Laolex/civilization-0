@@ -16,7 +16,8 @@
       "@civ/memory": ["packages/memory/src"],
       "@civ/beliefs": ["packages/beliefs/src"],
       "@civ/explainability": ["packages/explainability/src"],
-      "@civ/engine": ["packages/engine/src"]
+      "@civ/engine": ["packages/engine/src"],
+      "@civ/zerog": ["packages/zerog/src"]
     }
   }
 }
