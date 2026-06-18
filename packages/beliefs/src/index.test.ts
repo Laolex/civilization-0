@@ -32,4 +32,21 @@ describe("RuleBasedBeliefReviser", () => {
     expect(out.created).toHaveLength(0);
     expect(out.updated).toHaveLength(0);
   });
+
+  it("creates a distrust belief from a negative-polarity memory", () => {
+    const r = new RuleBasedBeliefReviser();
+    const out = r.revise({ citizenId: "ada", newMemory: mem("m3"), existing: [], targetName: "Marcus", polarity: -1, day: 4, idgen: () => "bn" });
+    expect(out.created).toHaveLength(1);
+    expect(out.created[0].statement).toBe("Marcus is untrustworthy");
+    expect(out.created[0].confidence).toBeLessThan(0.5);
+    expect(out.created[0].confidence).toBeGreaterThanOrEqual(0);
+  });
+
+  it("does not duplicate a source memory id already present on the belief", () => {
+    const r = new RuleBasedBeliefReviser();
+    const existing: Belief = { id: "b1", citizenId: "ada", statement: "Marcus is trustworthy", confidence: 0.6, sourceMemoryIds: ["m2"], updatedDay: 1 };
+    const out = r.revise({ citizenId: "ada", newMemory: mem("m2"), existing: [existing], targetName: "Marcus", polarity: 1, day: 5, idgen: () => "bx" });
+    expect(out.updated).toHaveLength(1);
+    expect(out.updated[0].sourceMemoryIds).toEqual(["m2"]);
+  });
 });
