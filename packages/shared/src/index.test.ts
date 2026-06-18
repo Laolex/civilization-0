@@ -13,6 +13,14 @@ describe("shared", () => {
     expect(cosineSimilarity([1, 0], [0, 1])).toBeCloseTo(0);
   });
 
+  it("returns 0 when either vector is all zeros", () => {
+    expect(cosineSimilarity([0, 0], [1, 0])).toBe(0);
+  });
+
+  it("throws on mismatched vector lengths", () => {
+    expect(() => cosineSimilarity([1, 0, 0], [1, 0])).toThrow(/length mismatch/);
+  });
+
   it("types a citizen", () => {
     const c: Citizen = {
       id: "c1", name: "Ada", occupation: "Engineer", age: 29,
