@@ -597,7 +597,6 @@ describe("InMemoryWorldStore", () => {
     const s = new InMemoryWorldStore();
     s.addEvent({ id: "e1", day: 1, type: "start_company", actorId: "ada", targetId: null, decisionId: "d1", payload: {} });
     s.updateEventArchive("e1", "0xroot", "0xtx");
-    const ev = s.getWorldState; // no direct getter; verify via re-query helper
     expect(s.getEvent("e1")?.zgRootHash).toBe("0xroot");
   });
 });
@@ -1296,7 +1295,7 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   // 8. Form memory
   const summary = `${citizen.name} chose to ${result.action}` +
     (result.targetId ? ` with ${result.targetId}` : "") + `: ${result.reasoning}`;
-  const importance = result.action && MAJOR_ACTIONS.includes(result.action) ? 8 : 4;
+  const importance = MAJOR_ACTIONS.includes(result.action) ? 8 : 4;
   let storedMemory: Memory | null = null;
   if (importance >= MEMORY_IMPORTANCE_THRESHOLD) {
     storedMemory = {
@@ -1350,7 +1349,7 @@ git commit -m "feat(engine): runCitizenTick composes the full causality loop"
 
 **Interfaces:**
 - Consumes: every package.
-- Produces: `seedAdaWorld(): { deps: TickDeps; }` and `runDays(deps, citizenId, days): Promise<TickResult[]>` — used by the test now and the CLI/UI later.
+- Produces: `seedAdaWorld(): { deps: TickDeps; storage: FakeStorage }` and `runDays(deps, citizenId, days): Promise<TickResult[]>` — used by the test now and the CLI/UI later. (Returns the concrete `FakeStorage` so callers can inspect `.calls`.)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1361,7 +1360,7 @@ import { seedAdaWorld, runDays } from "./scenario";
 
 describe("scenario: Ada starts a company", () => {
   it("produces a coherent, fully-traceable history over multiple days", async () => {
-    const { deps } = seedAdaWorld();
+    const { deps, storage } = seedAdaWorld();
     const results = await runDays(deps, "ada", 3);
 
     // every decision in the run has an archived trace (the 'why' is always durable)
@@ -1372,7 +1371,7 @@ describe("scenario: Ada starts a company", () => {
     }
 
     // at least one major event got archived to storage
-    const archived = deps.storage.calls.filter((c) => c.key.startsWith("event/"));
+    const archived = storage.calls.filter((c) => c.key.startsWith("event/"));
     expect(archived.length).toBeGreaterThan(0);
 
     // Ada accumulated at least one belief
@@ -1399,7 +1398,7 @@ import { ExplainabilityService } from "@civ/explainability";
 import type { ActionType } from "@civ/shared";
 import { runCitizenTick, type TickDeps, type TickResult } from "./index";
 
-export function seedAdaWorld(): { deps: TickDeps } {
+export function seedAdaWorld(): { deps: TickDeps; storage: FakeStorage } {
   const store = new InMemoryWorldStore();
   const embedder = new FakeEmbedder();
   const storage = new FakeStorage();
@@ -1419,11 +1418,13 @@ export function seedAdaWorld(): { deps: TickDeps } {
     confidence: 0.7, sourceMemoryIds: ["m2"], updatedDay: 2 });
   store.setWorldState({ day: 3, economy: { inflation: 8 }, headline: "Recession deepens" });
 
-  // Scripted brain: day 3 start a company with Marcus, then keep working it.
+  // Scripted brain: start a company with Marcus, then invest, then work.
+  // The brain advances its own step per decide() call — one call per tick.
   const plan: ActionType[] = ["start_company", "invest", "work"];
-  let day = 0;
+  let step = 0;
   const brain = new FakeBrain((ctx) => {
-    const action = plan[Math.min(day, plan.length - 1)];
+    const action = plan[Math.min(step, plan.length - 1)];
+    step++;
     const targetId = action === "work" ? null : "marcus";
     return {
       action, targetId,
@@ -1441,19 +1442,15 @@ export function seedAdaWorld(): { deps: TickDeps } {
     explain: new ExplainabilityService(storage),
     clock, idgen: () => `id${++n}`,
   };
-  // advance the closure's day counter alongside the clock via a wrapper
-  (deps as TickDeps & { _advance: () => void })._advance = () => { day++; };
-  return { deps };
+  return { deps, storage };
 }
 
 export async function runDays(deps: TickDeps, citizenId: string, days: number): Promise<TickResult[]> {
   const results: TickResult[] = [];
-  const advance = (deps as TickDeps & { _advance?: () => void })._advance;
   for (let i = 0; i < days; i++) {
     const r = await runCitizenTick(deps, citizenId);
     results.push(r);
     deps.clock.day += 1;
-    advance?.();
   }
   return results;
 }
