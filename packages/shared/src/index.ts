@@ -41,10 +41,19 @@ export interface Belief {
   sourceMemoryIds: string[]; updatedDay: number;
 }
 
+export interface ExecutionMeta {
+  provider: string;
+  model: string;
+  requestId?: string;
+  verified?: boolean;
+  verification?: unknown;
+}
+
 export interface Decision {
   id: string; citizenId: string; goalId: string | null; day: number;
   reasoning: string; action: ActionType; targetId: string | null;
   brainProvider: string; brainModel: string;
+  meta?: ExecutionMeta;
 }
 
 export interface DecisionMemory { decisionId: string; memoryId: string; weight: number; }
@@ -60,7 +69,8 @@ export interface DecisionTrace {
   id: string; decisionId: string;
   trace: {
     decision: ActionType; goal: string | null; retrievedMemories: string[];
-    beliefs: string[]; reasoning: string; eventId: string;
+    beliefs: string[]; reasoning: string; eventId?: string;
+    meta?: ExecutionMeta;
   };
   zgRootHash?: string; zgTxHash?: string;
 }
