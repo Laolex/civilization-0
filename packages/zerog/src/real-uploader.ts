@@ -16,7 +16,7 @@ export class RealUploader implements Uploader {
   async upload(bytes: Uint8Array): Promise<{ rootHash: string; txHash: string }> {
     const memData = new MemData(bytes);
     const [tx, err] = await this.indexer.upload(memData, this.config.evmRpc, this.signer);
-    if (err) throw new ZeroGStorageError(`indexer.upload error: ${String(err)}`);
+    if (err) throw new ZeroGStorageError(`indexer.upload error: ${String(err)}`, { cause: err });
     if (!tx) throw new ZeroGStorageError("indexer.upload returned no result");
     // The SDK may return a single-file result or a multi-file result
     if ("rootHash" in tx) {

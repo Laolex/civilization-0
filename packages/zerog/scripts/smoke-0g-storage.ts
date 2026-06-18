@@ -1,4 +1,6 @@
-import "dotenv/config";
+import { config as loadDotenv } from "dotenv";
+import { resolve } from "node:path";
+loadDotenv({ path: resolve(import.meta.dirname, "../../../.env") });
 import { loadZeroGConfig } from "../src/config";
 import { createZeroGStorage } from "../src/real-uploader";
 
