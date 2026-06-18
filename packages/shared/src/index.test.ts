@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ALL_ACTIONS, cosineSimilarity, type Citizen } from "./index";
-import type { ExecutionMeta } from "./index";
+import { ALL_ACTIONS, cosineSimilarity, type Citizen, type ExecutionMeta } from "./index";
 
 describe("shared", () => {
   it("exposes the MVP action verbs", () => {
@@ -41,7 +40,7 @@ describe("ExecutionMeta", () => {
     };
     const trace: import("./index").DecisionTrace = {
       id: "t1", decisionId: "d1",
-      trace: { decision: "work", goal: null, retrievedMemories: [], beliefs: [], reasoning: "x", meta },
+      trace: { decision: "work", goal: null, retrievedMemories: [], beliefs: [], reasoning: "x", eventId: "e1", meta },
     };
     expect(decision.meta?.verified).toBe(true);
     expect(trace.trace.meta?.provider).toBe("0xprov");

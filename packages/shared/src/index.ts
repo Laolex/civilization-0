@@ -69,7 +69,7 @@ export interface DecisionTrace {
   id: string; decisionId: string;
   trace: {
     decision: ActionType; goal: string | null; retrievedMemories: string[];
-    beliefs: string[]; reasoning: string; eventId?: string;
+    beliefs: string[]; reasoning: string; eventId: string;
     meta?: ExecutionMeta;
   };
   zgRootHash?: string; zgTxHash?: string;
