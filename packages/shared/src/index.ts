@@ -90,3 +90,24 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   if (na === 0 || nb === 0) return 0;
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
+
+export interface WorldSnapshot {
+  capturedAt: string;
+  citizens: Citizen[];
+  goals: Goal[];
+  relationships: Relationship[];
+  memories: Memory[];
+  beliefs: Belief[];
+  decisions: Decision[];
+  decisionMemories: DecisionMemory[];
+  decisionBeliefs: DecisionBelief[];
+  events: WorldEvent[];
+  traces: DecisionTrace[];
+  worldState: WorldState;
+}
+
+/** Return a copy of the snapshot with every memory embedding emptied —
+ *  64-float vectors are render-noise for the UI and bloat world.json. */
+export function stripEmbeddings(s: WorldSnapshot): WorldSnapshot {
+  return { ...s, memories: s.memories.map((m) => ({ ...m, embedding: [] })) };
+}
