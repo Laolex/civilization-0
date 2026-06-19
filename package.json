@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit --pretty"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.0.0",
+    "jsdom": "^25.0.0",
     "typescript": "^5.5.0",
     "vite-tsconfig-paths": "^5.0.0",
     "vitest": "^2.0.0"
