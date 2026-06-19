@@ -2,27 +2,60 @@
 import { useState, type ReactNode } from "react";
 import type { CausalChainView, ChainNode } from "../lib/types";
 
-const ACCENT: Record<string, string> = { compute: "var(--accent)", storage: "var(--accent)" };
+const ACCENT_KINDS = new Set(["compute", "storage"]);
 
 function NodeCard({ node, extra }: { node: ChainNode; extra?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const verified = node.detail.verified === "true";
+  const isAccent = ACCENT_KINDS.has(node.kind);
+
   return (
-    <div style={{ width: 380, border: "1px solid var(--slate)", borderRadius: 10, background: "var(--panel)", padding: "14px 16px" }}>
-      <button onClick={() => setOpen((v) => !v)} style={{ all: "unset", cursor: "pointer", display: "flex", justifyContent: "space-between", width: "100%", color: ACCENT[node.kind] ?? "var(--fg)", fontWeight: 600 }}>
-        <span><span data-title>{node.title}</span>{verified ? <span style={{ marginLeft: 4 }}>✓</span> : null}</span>
-        <span style={{ color: "var(--muted)" }}>{typeof node.weight === "number" ? node.weight.toFixed(2) : open ? "−" : "+"}</span>
+    <div
+      className={`node-card${verified ? " verified" : ""}`}
+      style={{ maxWidth: 480, width: "100%" }}
+    >
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="node-card-trigger"
+        aria-expanded={open}
+      >
+        <div className="node-card-left">
+          <span className={`node-kind-tag${isAccent ? " accent" : ""}`}>
+            {node.kind}
+          </span>
+          <span data-title className="node-title">{node.title}</span>
+          {verified && (
+            <span className="node-verified-mark">
+              <svg className="node-verified-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M2 6.5L4.5 9L10 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Verified
+            </span>
+          )}
+        </div>
+        <div className="node-card-right">
+          {typeof node.weight === "number" && (
+            <span className="node-weight">{node.weight.toFixed(2)}</span>
+          )}
+          <span className="node-toggle" aria-hidden="true">{open ? "−" : "+"}</span>
+        </div>
       </button>
+
       {open && (
-        <dl style={{ margin: "10px 0 0", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 13 }}>
-          {Object.entries(node.detail).map(([k, v]) => (
-            <div key={k} style={{ display: "contents" }}>
-              <dt style={{ color: "var(--muted)" }}>{k}</dt>
-              <dd className={k.toLowerCase().includes("hash") ? "mono" : undefined} style={{ margin: 0, wordBreak: "break-all" }}>{v}</dd>
-            </div>
-          ))}
-          {extra}
-        </dl>
+        <div className="node-detail">
+          <dl className="node-detail-grid">
+            {Object.entries(node.detail).map(([k, v]) => {
+              const isMono = k.toLowerCase().includes("hash") || k.toLowerCase().includes("tx") || k.toLowerCase() === "provider" || k.toLowerCase() === "model";
+              return (
+                <div key={k} style={{ display: "contents" }}>
+                  <dt className="node-detail-key">{k}</dt>
+                  <dd className={`node-detail-val${isMono ? " mono-val" : ""}`}>{v}</dd>
+                </div>
+              );
+            })}
+            {extra}
+          </dl>
+        </div>
       )}
     </div>
   );
@@ -30,11 +63,16 @@ function NodeCard({ node, extra }: { node: ChainNode; extra?: ReactNode }) {
 
 export function CausalChain({ chain, storageExtra }: { chain: CausalChainView; storageExtra?: ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+    <div className="chain-root">
       {chain.nodes.map((node, i) => (
-        <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div key={node.kind} className="chain-node-wrap">
           <NodeCard node={node} extra={node.kind === "storage" ? storageExtra : undefined} />
-          {i < chain.nodes.length - 1 && <span style={{ color: "var(--muted)", padding: "6px 0" }}>▼</span>}
+          {i < chain.nodes.length - 1 && (
+            <div className="chain-connector">
+              <div className="chain-connector-line" />
+              <div className="chain-connector-arrow" />
+            </div>
+          )}
         </div>
       ))}
     </div>

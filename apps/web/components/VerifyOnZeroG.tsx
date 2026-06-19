@@ -15,6 +15,10 @@ export function VerifyOnZeroG({ rootHash }: { rootHash: string }) {
     setS({ status: "loading" });
     try {
       const res = await fetch(`/api/verify?root=${encodeURIComponent(rootHash)}`);
+      if (res.ok === false) {
+        setS({ status: "error", error: `HTTP ${res.status}` });
+        return;
+      }
       const j = (await res.json()) as {
         ok: boolean;
         key?: string;
@@ -33,84 +37,40 @@ export function VerifyOnZeroG({ rootHash }: { rootHash: string }) {
   }
 
   return (
-    <div
-      style={{
-        gridColumn: "1 / -1",
-        marginTop: 12,
-        padding: "10px 14px",
-        background: "#111317",
-        border: "1px solid #2a2d35",
-        borderRadius: 8,
-      }}
-    >
-      <button
-        onClick={verify}
-        disabled={s.status === "loading"}
-        style={{
-          all: "unset",
-          cursor: s.status === "loading" ? "wait" : "pointer",
-          padding: "6px 14px",
-          border: "1px solid var(--accent, #7aa2f7)",
-          borderRadius: 6,
-          color: "var(--accent, #7aa2f7)",
-          fontSize: 13,
-          fontFamily: "monospace",
-          opacity: s.status === "loading" ? 0.7 : 1,
-        }}
-      >
-        {s.status === "loading" ? "Retrieving from 0G…" : "Verify on 0G"}
-      </button>
+    <div className="verify-root" style={{ gridColumn: "1 / -1" }}>
+      <div className="verify-btn-row">
+        <button
+          onClick={verify}
+          disabled={s.status === "loading"}
+          className="verify-btn"
+        >
+          {s.status === "loading" ? "Retrieving from 0G…" : "Verify on 0G"}
+        </button>
+        {s.status === "loading" && (
+          <span className="verify-status-text">Contacting 0G Storage…</span>
+        )}
+      </div>
 
       {s.status === "ok" && (
-        <div style={{ marginTop: 10 }}>
-          <div
-            style={{
-              color: "var(--accent, #7aa2f7)",
-              fontSize: 13,
-              fontFamily: "monospace",
-              marginBottom: 6,
-            }}
-          >
-            ✓ Verified on 0G Testnet ({s.bytes} bytes retrieved)
+        <div className="verify-evidence">
+          <div className="verify-evidence-header">
+            <span className="verify-ok-badge">
+              ✓ Verified on 0G Testnet
+            </span>
+            <span className="verify-bytes">{s.bytes} bytes retrieved</span>
           </div>
-          <div
-            style={{
-              color: "#8b949e",
-              fontSize: 11,
-              fontFamily: "monospace",
-              wordBreak: "break-all",
-              marginBottom: 8,
-            }}
-          >
+          <div className="verify-hash">
+            <span className="verify-hash-label">root hash</span>
             {rootHash}
           </div>
-          <pre
-            style={{
-              margin: 0,
-              padding: 12,
-              background: "#0d0f12",
-              border: "1px solid #2a2d35",
-              borderRadius: 6,
-              fontSize: 12,
-              fontFamily: "monospace",
-              color: "#c9d1d9",
-              overflowX: "auto",
-            }}
-          >
+          <pre className="verify-pre">
             {JSON.stringify(s.excerpt, null, 2)}
           </pre>
         </div>
       )}
 
       {s.status === "error" && (
-        <div
-          style={{
-            marginTop: 8,
-            color: "#cc6666",
-            fontSize: 13,
-            fontFamily: "monospace",
-          }}
-        >
+        <div className="verify-error">
           Could not reach 0G Storage: {s.error}
         </div>
       )}
