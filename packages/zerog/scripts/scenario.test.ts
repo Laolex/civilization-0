@@ -25,6 +25,7 @@ describe("buildAdaScenario", () => {
     expect(stimulus).toHaveLength(3);
     expect(decided).toHaveLength(1);
 
+    expect(snap.decisions).toHaveLength(1);
     const d = snap.decisions[0];
     expect(d.action).toBe("invest");
     expect(d.targetId).toBe("marcus");
@@ -33,5 +34,6 @@ describe("buildAdaScenario", () => {
 
     const trace = snap.traces.find((t) => t.decisionId === d.id)!;
     expect(trace.zgRootHash).toBeDefined(); // archived (fake root)
+    expect(trace.trace.eventId).toBe(decided[0].id);
   });
 });
