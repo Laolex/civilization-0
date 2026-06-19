@@ -8,10 +8,12 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit --pretty"
+    "typecheck": "tsc --noEmit --pretty",
+    "test:it": "dotenv -e .env -- vitest run --config vitest.integration.config.ts"
   },
   "devDependencies": {
     "@testing-library/react": "^16.0.0",
+    "dotenv-cli": "^11.0.0",
     "jsdom": "^25.0.0",
     "typescript": "^5.5.0",
     "vite-tsconfig-paths": "^5.0.0",
