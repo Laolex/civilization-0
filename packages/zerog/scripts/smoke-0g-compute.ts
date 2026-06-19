@@ -1,3 +1,6 @@
+// Run from the zerog package dir with the require condition (the compute SDK's
+// 0.8.4 ESM bundle is broken; --conditions require picks its working CJS build):
+//   pnpm -C /opt/civilization-0/packages/zerog exec tsx --conditions require scripts/smoke-0g-compute.ts
 import { config as loadDotenv } from "dotenv";
 import { resolve } from "node:path";
 loadDotenv({ path: resolve(import.meta.dirname, "../../../.env") });

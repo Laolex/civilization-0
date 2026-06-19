@@ -8,7 +8,7 @@ describe("loadZeroGConfig", () => {
     expect(c.privateKey).toBe("0xabc");
     expect(c.evmRpc).toBe("https://evmrpc-testnet.0g.ai");
     expect(c.storageIndexer).toBe("https://indexer-storage-testnet-turbo.0g.ai");
-    expect(c.fund.deposit).toBe(0.1);
+    expect(c.fund.deposit).toBe(3); // protocol minimum to open a ledger
     expect(c.fund.transfer).toBe(5n * 10n ** 16n); // 0.05 OG in neuron
   });
   it("allows overriding fund amounts via env (OG → neuron)", () => {

@@ -42,6 +42,9 @@ export class RealChat implements Chat {
   async complete(messages: ChatMessage[]): Promise<ChatResult> {
     let headers: Record<string, string>;
     try {
+      // ServingRequestHeaders has optional string fields; Authorization is always
+      // present per SDK 0.8.4. Cast needed because Record<string,string> rejects
+      // string|undefined values (fetch drops undefined header values at runtime).
       headers = await this.broker.inference.getRequestHeaders(this.provider) as unknown as Record<string, string>;
     } catch (err) {
       throw new ZeroGBrainError("Failed to get 0G Compute request headers", { cause: err });
@@ -88,8 +91,11 @@ export async function ensureFunded(broker: Broker, config: ZeroGConfig): Promise
   if (config.computeProvider) {
     try {
       await broker.ledger.transferFund(config.computeProvider, "inference", config.fund.transfer);
-    } catch {
-      // already funded or acknowledged — not fatal
+    } catch (err) {
+      // Non-fatal for the already-funded case, but surfaced so a real failure is
+      // diagnosable. If this is a "provider not acknowledged" error, call
+      // broker.inference.acknowledgeProviderSigner(provider) before retrying.
+      console.warn("[ensureFunded] transferFund skipped:", String(err));
     }
   }
 }
