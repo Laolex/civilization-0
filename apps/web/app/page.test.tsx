@@ -13,6 +13,7 @@ import Home from "./page";
 describe("landing page", () => {
   it("renders the tagline and an Enter link to Ada", () => {
     const html = renderToStaticMarkup(React.createElement(Home));
+    expect(html).toContain("provenance layer for agentic AI");
     expect(html).toContain("think on 0G");
     expect(html).toContain("lives on 0G");
     expect(html).toContain("Enter Civilization");

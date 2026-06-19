@@ -26,6 +26,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@civ/provenance':
+        specifier: workspace:*
+        version: link:../../packages/provenance
       '@civ/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -58,6 +61,21 @@ importers:
   packages/explainability: {}
 
   packages/memory: {}
+
+  packages/provenance:
+    dependencies:
+      '@civ/brain':
+        specifier: workspace:*
+        version: link:../brain
+      '@civ/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@civ/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@civ/zerog':
+        specifier: workspace:*
+        version: link:../zerog
 
   packages/shared: {}
 

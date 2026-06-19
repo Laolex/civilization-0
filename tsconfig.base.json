@@ -17,7 +17,8 @@
       "@civ/beliefs": ["packages/beliefs/src"],
       "@civ/explainability": ["packages/explainability/src"],
       "@civ/engine": ["packages/engine/src"],
-      "@civ/zerog": ["packages/zerog/src"]
+      "@civ/zerog": ["packages/zerog/src"],
+      "@civ/provenance": ["packages/provenance/src"]
     }
   }
 }

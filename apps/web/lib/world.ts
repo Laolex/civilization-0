@@ -59,8 +59,8 @@ export function buildStorySummary(s: WorldSnapshot, citizenId: string): string {
   const parts = [
     keyMemory ? `${keyMemory.summary}.` : "",
     belief ? `Over time ${c.name} formed the belief that ${belief.statement.toLowerCase()}.` : "",
-    `That belief influenced a decision generated on 0G Compute.`,
-    decision ? `${c.name} ultimately chose to ${decision.action} ${decision.targetId ? `with ${target}` : ""}, and the decision trace was archived on 0G Storage.` : "",
+    `That belief fed into a decision reasoned and cryptographically verified on 0G Compute.`,
+    decision ? `${c.name} ultimately chose to ${decision.action} ${decision.targetId ? `with ${target}` : ""} — and the complete reasoning trace was archived on 0G Storage, where anyone can replay and verify it.` : "",
   ];
   return parts.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
 }

@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 4310",
+    "dev": "next dev -H 0.0.0.0 -p 8792",
     "build": "next build",
-    "start": "next start -p 4310",
+    "start": "next start -H 0.0.0.0 -p 8792",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@civ/shared": "workspace:*",
     "@civ/zerog": "workspace:*",
+    "@civ/provenance": "workspace:*",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1"
