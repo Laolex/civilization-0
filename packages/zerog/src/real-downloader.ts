@@ -1,13 +1,12 @@
 // packages/zerog/src/real-downloader.ts
 import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import type { Downloader } from "./download";
-import type { ZeroGConfig } from "./config";
 import { ZeroGStorageError } from "./errors";
 
 export class RealDownloader implements Downloader {
   private readonly indexer: Indexer;
-  constructor(config: ZeroGConfig) {
-    this.indexer = new Indexer(config.storageIndexer);
+  constructor(storageIndexer: string) {
+    this.indexer = new Indexer(storageIndexer);
   }
 
   async download(rootHash: string): Promise<Uint8Array> {
@@ -19,6 +18,6 @@ export class RealDownloader implements Downloader {
   }
 }
 
-export function createZeroGDownloader(config: ZeroGConfig): RealDownloader {
-  return new RealDownloader(config);
+export function createZeroGDownloader(storageIndexer: string): RealDownloader {
+  return new RealDownloader(storageIndexer);
 }
