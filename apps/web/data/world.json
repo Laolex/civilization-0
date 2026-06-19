@@ -1,0 +1,231 @@
+{
+  "capturedAt": "2026-06-19T13:16:46.545Z",
+  "citizens": [
+    {
+      "id": "ada",
+      "name": "Ada",
+      "occupation": "Engineer",
+      "age": 29,
+      "traits": {
+        "ambition": 90,
+        "empathy": 40,
+        "loyalty": 30,
+        "curiosity": 80,
+        "discipline": 80,
+        "riskTolerance": 75
+      },
+      "wealth": 0,
+      "reputation": 50,
+      "tier": 3,
+      "createdDay": 0
+    },
+    {
+      "id": "marcus",
+      "name": "Marcus",
+      "occupation": "Investor",
+      "age": 41,
+      "traits": {
+        "ambition": 70,
+        "empathy": 60,
+        "loyalty": 65,
+        "curiosity": 50,
+        "discipline": 70,
+        "riskTolerance": 60
+      },
+      "wealth": 100000,
+      "reputation": 70,
+      "tier": 2,
+      "createdDay": 0
+    }
+  ],
+  "goals": [
+    {
+      "id": "g1",
+      "citizenId": "ada",
+      "kind": "wealth",
+      "description": "financial independence",
+      "progress": 0.1,
+      "active": true
+    }
+  ],
+  "relationships": [
+    {
+      "citizenId": "ada",
+      "otherId": "marcus",
+      "trust": 0.7,
+      "friendship": 0.5,
+      "influence": 0.4
+    }
+  ],
+  "memories": [
+    {
+      "id": "m1",
+      "citizenId": "ada",
+      "day": 1,
+      "type": "event",
+      "importance": 8,
+      "summary": "Marcus helped me when I lost my job",
+      "embedding": []
+    },
+    {
+      "id": "m2",
+      "citizenId": "ada",
+      "day": 3,
+      "type": "relationship",
+      "importance": 7,
+      "summary": "Met Marcus, an investor who believed in my idea",
+      "embedding": []
+    },
+    {
+      "id": "m3",
+      "citizenId": "ada",
+      "day": 7,
+      "type": "event",
+      "importance": 7,
+      "summary": "Received seed funding from Marcus",
+      "embedding": []
+    },
+    {
+      "id": "tick-4",
+      "citizenId": "ada",
+      "day": 12,
+      "type": "relationship",
+      "importance": 8,
+      "summary": "Ada chose to invest with Marcus: I want to achieve financial independence quickly by leveraging Marcus's investment.",
+      "embedding": []
+    }
+  ],
+  "beliefs": [
+    {
+      "id": "b1",
+      "citizenId": "ada",
+      "statement": "Marcus is trustworthy",
+      "confidence": 0.9500000000000001,
+      "sourceMemoryIds": [
+        "m1",
+        "tick-4"
+      ],
+      "updatedDay": 12
+    }
+  ],
+  "decisions": [
+    {
+      "id": "tick-1",
+      "citizenId": "ada",
+      "goalId": "g1",
+      "day": 12,
+      "reasoning": "I want to achieve financial independence quickly by leveraging Marcus's investment.",
+      "action": "invest",
+      "targetId": "Marcus",
+      "brainProvider": "0g-compute",
+      "brainModel": "qwen/qwen2.5-omni-7b",
+      "meta": {
+        "provider": "0xa48f01287233509FD694a22Bf840225062E67836",
+        "model": "qwen/qwen2.5-omni-7b",
+        "requestId": "530f08de-757c-4fed-8666-7fe2a262975c",
+        "verified": true,
+        "verification": {
+          "chatID": "530f08de-757c-4fed-8666-7fe2a262975c"
+        }
+      }
+    }
+  ],
+  "decisionMemories": [
+    {
+      "decisionId": "tick-1",
+      "memoryId": "m1",
+      "weight": 0.8
+    }
+  ],
+  "decisionBeliefs": [
+    {
+      "decisionId": "tick-1",
+      "beliefId": "b1",
+      "weight": 0.8
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-lostjob",
+      "day": 1,
+      "type": "quit_job",
+      "actorId": "ada",
+      "targetId": null,
+      "decisionId": null,
+      "payload": {
+        "label": "Lost her job"
+      }
+    },
+    {
+      "id": "evt-met",
+      "day": 3,
+      "type": "meet",
+      "actorId": "ada",
+      "targetId": "marcus",
+      "decisionId": null,
+      "payload": {
+        "label": "Met Marcus"
+      }
+    },
+    {
+      "id": "evt-funded",
+      "day": 7,
+      "type": "partner",
+      "actorId": "ada",
+      "targetId": "marcus",
+      "decisionId": null,
+      "payload": {
+        "label": "Received funding"
+      }
+    },
+    {
+      "id": "tick-2",
+      "day": 12,
+      "type": "invest",
+      "actorId": "ada",
+      "targetId": "Marcus",
+      "decisionId": "tick-1",
+      "payload": {},
+      "zgRootHash": "0xa713be63e35ffbe1c4f25a634ebf3f9a2a40d6faafa19f90fc4c4f57621423f1",
+      "zgTxHash": "0x42a4b0bec2f493e8ff42991ea18f6d2bbaed642bab830b6eb2205913b36b333b"
+    }
+  ],
+  "traces": [
+    {
+      "id": "tick-3",
+      "decisionId": "tick-1",
+      "trace": {
+        "decision": "invest",
+        "goal": "financial independence",
+        "retrievedMemories": [
+          "m1",
+          "m2",
+          "m3"
+        ],
+        "beliefs": [
+          "Marcus is trustworthy"
+        ],
+        "reasoning": "I want to achieve financial independence quickly by leveraging Marcus's investment.",
+        "eventId": "tick-2",
+        "meta": {
+          "provider": "0xa48f01287233509FD694a22Bf840225062E67836",
+          "model": "qwen/qwen2.5-omni-7b",
+          "requestId": "530f08de-757c-4fed-8666-7fe2a262975c",
+          "verified": true,
+          "verification": {
+            "chatID": "530f08de-757c-4fed-8666-7fe2a262975c"
+          }
+        }
+      },
+      "zgRootHash": "0x1b53d66c0996f0db793b0064599afaf5e62060928e0c443f879e6a7b5d5211ad",
+      "zgTxHash": "0x05fde8c166d0483667a8288865af79f13dfc68182b0817f4ca0d76e1753016cf"
+    }
+  ],
+  "worldState": {
+    "day": 12,
+    "economy": {
+      "inflation": 8
+    },
+    "headline": "Markets recovering after the downturn"
+  }
+}
