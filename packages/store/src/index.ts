@@ -95,7 +95,7 @@ export class InMemoryWorldStore implements WorldStore {
       decisionBeliefs: [...this.decisionBeliefs],
       events: [...this.events.values()],
       traces: [...this.traces],
-      worldState: this.world,
+      worldState: { ...this.world },
     };
   }
 }

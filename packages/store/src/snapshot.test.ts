@@ -28,4 +28,17 @@ describe("InMemoryWorldStore.snapshot", () => {
     expect(snap.traces[0].id).toBe("t1");
     expect(snap.worldState.day).toBe(12);
   });
+
+  it("returns copies that do not alias internal state", () => {
+    const s = new InMemoryWorldStore();
+    s.upsertCitizen({ id: "ada", name: "Ada", occupation: "Engineer", age: 29, traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 }, wealth: 0, reputation: 50, tier: 3, createdDay: 0 });
+    s.setWorldState({ day: 12, economy: { inflation: 8 }, headline: "Recession" });
+
+    const snap = s.snapshot();
+    snap.citizens.push({ ...snap.citizens[0], id: "eve", name: "Eve" });
+    snap.worldState.day = 999;
+
+    expect(s.snapshot().citizens).toHaveLength(1);
+    expect(s.getWorldState().day).toBe(12);
+  });
 });
