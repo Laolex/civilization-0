@@ -5,3 +5,4 @@ export * from "./brain";
 export * from "./download";
 export { RealUploader, createZeroGStorage } from "./real-uploader";
 export { RealChat, createZeroGComputeBrain } from "./real-chat";
+export { RealDownloader, createZeroGDownloader } from "./real-downloader";
