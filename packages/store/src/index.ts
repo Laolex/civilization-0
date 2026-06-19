@@ -1,6 +1,6 @@
 import type {
   Belief, Citizen, Decision, DecisionBelief, DecisionMemory, DecisionTrace,
-  Goal, Memory, Relationship, WorldEvent, WorldState,
+  Goal, Memory, Relationship, WorldEvent, WorldState, WorldSnapshot,
 } from "@civ/shared";
 
 export interface WorldStore {
@@ -28,6 +28,7 @@ export interface WorldStore {
   updateTraceArchive(id: string, rootHash: string, txHash: string): void;
   getWorldState(): WorldState;
   setWorldState(w: WorldState): void;
+  snapshot(): WorldSnapshot;
 }
 
 export class InMemoryWorldStore implements WorldStore {
@@ -81,4 +82,20 @@ export class InMemoryWorldStore implements WorldStore {
   }
   getWorldState() { return this.world; }
   setWorldState(w: WorldState) { this.world = w; }
+  snapshot(): WorldSnapshot {
+    return {
+      capturedAt: new Date().toISOString(),
+      citizens: [...this.citizens.values()],
+      goals: [...this.goals.values()],
+      relationships: [...this.relationships],
+      memories: [...this.memories],
+      beliefs: [...this.beliefs.values()],
+      decisions: [...this.decisions],
+      decisionMemories: [...this.decisionMemories],
+      decisionBeliefs: [...this.decisionBeliefs],
+      events: [...this.events.values()],
+      traces: [...this.traces],
+      worldState: { ...this.world },
+    };
+  }
 }
