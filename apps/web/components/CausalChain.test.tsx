@@ -20,7 +20,9 @@ const chain: CausalChainView = {
 describe("CausalChain", () => {
   it("renders all node titles in order", () => {
     render(<CausalChain chain={chain} />);
-    for (const n of chain.nodes) expect(screen.getByText(n.title)).toBeDefined();
+    // Query all data-title elements in DOM order and assert they match the causal sequence
+    const titles = screen.getAllByText(/./, { selector: "[data-title]" }).map((el) => el.textContent);
+    expect(titles).toEqual(chain.nodes.map((n) => n.title));
   });
 
   it("reveals detail on click", () => {
