@@ -45,6 +45,18 @@ describe("getCausalChain", () => {
     expect(c.rootHash).toBe("0xroot");
     expect(c.txHash).toBe("0xtx");
   });
+
+  it("handles targetId fallback when case-mismatch fails citizen lookup", () => {
+    const fixture = snap();
+    const copy = { ...fixture, decisions: fixture.decisions.map((d) => ({ ...d, targetId: "Marcus" })) };
+    const c = getCausalChain(copy, "d1");
+    expect(c.nodes.map((n) => n.kind)).toEqual(["memory", "belief", "compute", "decision", "event", "storage"]);
+    expect(c.nodes[3].detail.target).toBe("Marcus");
+    expect(c.nodes[4].kind).toBe("event");
+    const summary = buildStorySummary(copy, "ada");
+    expect(summary).toContain("Marcus");
+    expect(summary).not.toContain("undefined");
+  });
 });
 
 describe("buildStorySummary", () => {

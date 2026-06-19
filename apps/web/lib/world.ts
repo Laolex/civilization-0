@@ -43,7 +43,7 @@ export function getCausalChain(s: WorldSnapshot, decisionId: string): CausalChai
   const meta = decision.meta;
   nodes.push({ kind: "compute", title: "0G Compute", detail: { provider: meta?.provider ?? decision.brainProvider, model: meta?.model ?? decision.brainModel, verified: String(meta?.verified ?? false) } });
   nodes.push({ kind: "decision", title: "Decision", detail: { action: decision.action, target: decision.targetId ?? "—", reasoning: decision.reasoning } });
-  if (event) nodes.push({ kind: "event", title: "Event", detail: { label: eventLabel(s, event), day: String(event.day) } });
+  nodes.push({ kind: "event", title: "Event", detail: { label: event ? eventLabel(s, event) : "—", day: event ? String(event.day) : "—" } });
   nodes.push({ kind: "storage", title: "0G Storage", detail: { rootHash: trace?.zgRootHash ?? "—", txHash: trace?.zgTxHash ?? "—" } });
 
   return { decisionId, nodes, rootHash: trace?.zgRootHash, txHash: trace?.zgTxHash };

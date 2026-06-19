@@ -3,5 +3,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
-  test: { globals: true, include: ["packages/**/*.test.ts", "apps/**/*.test.{ts,tsx}"], },
+  test: {
+    globals: true,
+    include: ["packages/**/*.test.ts", "apps/**/*.test.{ts,tsx}"],
+    alias: {
+      "react/jsx-runtime": "react/jsx-runtime",
+    },
+  },
 });
