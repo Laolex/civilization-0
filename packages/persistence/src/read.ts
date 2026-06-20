@@ -111,3 +111,14 @@ export async function listEventTypes(pool: Pool): Promise<string[]> {
   const r = await pool.query("SELECT DISTINCT type FROM events ORDER BY type");
   return r.rows.map((x) => x.type as string);
 }
+
+export interface NarrativeView { id: string; subjectId: string; kind: string; day: number; text: string; rootHash: string | null; }
+
+export async function readNarrative(pool: Pool, subjectId: string, kind: string): Promise<NarrativeView | null> {
+  const r = await pool.query(
+    `SELECT id, subject_id, kind, day, text, zg_root_hash FROM narratives
+     WHERE subject_id = $1 AND kind = $2 ORDER BY day DESC, id DESC LIMIT 1`, [subjectId, kind]);
+  const x = r.rows[0];
+  if (!x) return null;
+  return { id: x.id, subjectId: x.subject_id, kind: x.kind, day: x.day, text: x.text, rootHash: x.zg_root_hash ?? null };
+}
