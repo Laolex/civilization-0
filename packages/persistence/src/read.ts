@@ -126,3 +126,31 @@ export async function readNarrative(pool: Pool, subjectId: string, kind: string)
   if (!x) return null;
   return { id: x.id, subjectId: x.subject_id, kind: x.kind, day: x.day, text: x.text, rootHash: x.zg_root_hash ?? null };
 }
+
+export interface CitizenProfileView {
+  id: string; name: string; occupation: string; age: number;
+  traits: Record<string, number>; wealth: number; reputation: number; tier: number; createdDay: number;
+}
+export interface RelationshipView { otherId: string; trust: number; friendship: number; influence: number; }
+export interface GoalView { id: string; kind: string; description: string; progress: number; active: boolean; }
+
+export async function readCitizen(pool: Pool, id: string): Promise<CitizenProfileView | null> {
+  const r = await pool.query("SELECT * FROM citizens WHERE id = $1", [id]);
+  const x = r.rows[0];
+  if (!x) return null;
+  return { id: x.id, name: x.name, occupation: x.occupation, age: x.age,
+    traits: (x.traits ?? {}) as Record<string, number>,
+    wealth: Number(x.wealth), reputation: Number(x.reputation), tier: x.tier, createdDay: x.created_day };
+}
+
+export async function readRelationships(pool: Pool, id: string): Promise<RelationshipView[]> {
+  const r = await pool.query(
+    "SELECT other_id, trust, friendship, influence FROM relationships WHERE citizen_id = $1 ORDER BY other_id", [id]);
+  return r.rows.map((x) => ({ otherId: x.other_id, trust: Number(x.trust), friendship: Number(x.friendship), influence: Number(x.influence) }));
+}
+
+export async function readGoals(pool: Pool, id: string): Promise<GoalView[]> {
+  const r = await pool.query(
+    "SELECT id, kind, description, progress, active FROM goals WHERE citizen_id = $1 ORDER BY id", [id]);
+  return r.rows.map((x) => ({ id: x.id, kind: x.kind, description: x.description, progress: Number(x.progress), active: x.active }));
+}
