@@ -3,6 +3,7 @@ export * from "./migrate";
 export * from "./read";
 export * from "./citizen-write";
 export * from "./auth-write";
+export * from "./world-write";
 export * from "./repository";
 export * from "./org-repository";
 export * from "./narrative-repository";
