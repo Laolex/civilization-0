@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { getPool, closePool, WorldRepository, migrate, resetWorld } from "@civ/persistence";
+import { getPool, closePool, WorldRepository, OrgRepository, migrate, resetWorld } from "@civ/persistence";
+import type { TickDeps } from "@civ/engine";
 import { runDay } from "./loop";
 import { FakeBrain } from "@civ/brain";
 import { FakeStorage } from "@civ/storage";
@@ -32,4 +33,22 @@ it("runDay ticks tier-3 and persists", async () => {
   expect(out.ticked).toContain("founder");
   const { rows } = await getPool().query("SELECT day FROM world_state WHERE id = 1");
   expect(rows[0].day).toBe(3);
+});
+
+it("a create_org citizen decision founds an org via orgEffects", async () => {
+  const orgRepo = new OrgRepository();
+  let n = 0; const idgen = () => `oe-${n++}`;
+  const makeTickDeps = (store: InMemoryWorldStore, day: number): TickDeps => {
+    const embedder = new FakeEmbedder();
+    return { store, embedder, memoryIndex: new MemoryIndex(store, embedder),
+      reviser: new RuleBasedBeliefReviser(),
+      brain: new FakeBrain(() => ({ action: "create_org", targetId: null, reasoning: "found a guild",
+        memoryWeights: {}, beliefWeights: {} })),
+      storage: new FakeStorage(), explain: new ExplainabilityService(new FakeStorage()),
+      clock: { day }, idgen: () => `t-${n++}` };
+  };
+  await runDay({ repo, makeTickDeps, citizens: [{ id: "founder", tier: 3 }],
+    orgEffects: { orgRepo, idgen } }, 4);
+  const { rows } = await getPool().query("SELECT COUNT(*)::int c FROM organizations WHERE founder_id = 'founder'");
+  expect(rows[0].c).toBeGreaterThanOrEqual(1);
 });
