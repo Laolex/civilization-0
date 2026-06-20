@@ -140,6 +140,10 @@ importers:
       '@civ/zerog':
         specifier: workspace:*
         version: link:../zerog
+    devDependencies:
+      tsx:
+        specifier: ^4
+        version: 4.22.4
 
   packages/shared: {}
 
