@@ -3,4 +3,5 @@ export * from "./migrate";
 export * from "./read";
 export * from "./repository";
 export * from "./org-repository";
+export * from "./narrative-repository";
 export * from "./testutil";

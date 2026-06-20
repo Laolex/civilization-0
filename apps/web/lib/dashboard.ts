@@ -1,7 +1,7 @@
 export interface WorldView {
   day: number;
   citizens: { id: string; name: string; tier: number; reputation: number }[];
-  recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null }[];
+  recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null; rootHash?: string | null }[];
 }
 
 export function topCitizens(v: WorldView, k: number): WorldView["citizens"] {

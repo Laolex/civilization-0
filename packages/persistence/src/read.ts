@@ -8,7 +8,7 @@ import type { Pool } from "pg";
 export interface WorldView {
   day: number;
   citizens: { id: string; name: string; tier: number; reputation: number }[];
-  recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null }[];
+  recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null; rootHash: string | null }[];
 }
 
 export async function readWorldView(pool: Pool, limit: number): Promise<WorldView> {
@@ -17,7 +17,10 @@ export async function readWorldView(pool: Pool, limit: number): Promise<WorldVie
     "SELECT id, name, tier, reputation FROM citizens ORDER BY reputation DESC",
   );
   const es = await pool.query(
-    "SELECT id, day, type, actor_id, target_id FROM events ORDER BY day DESC, id DESC LIMIT $1",
+    `SELECT e.id, e.day, e.type, e.actor_id, e.target_id,
+       COALESCE(e.zg_root_hash, t.zg_root_hash) AS root_hash
+     FROM events e LEFT JOIN traces t ON t.decision_id = e.decision_id
+     ORDER BY e.day DESC, e.id DESC LIMIT $1`,
     [limit],
   );
   return {
@@ -34,6 +37,7 @@ export async function readWorldView(pool: Pool, limit: number): Promise<WorldVie
       type: r.type,
       actorId: r.actor_id,
       targetId: r.target_id,
+      rootHash: r.root_hash ?? null,
     })),
   };
 }
@@ -79,4 +83,46 @@ export async function readOrgList(pool: Pool): Promise<{ id: string; name: strin
      FROM organizations o LEFT JOIN memberships m ON m.org_id = o.id
      GROUP BY o.id, o.name, o.kind, o.treasury ORDER BY o.name`);
   return r.rows.map((x) => ({ id: x.id, name: x.name, kind: x.kind, treasury: Number(x.treasury), memberCount: x.member_count }));
+}
+
+export interface HistoricalEvent {
+  id: string; day: number; type: string; actorId: string; targetId: string | null;
+  reasoning: string | null; rootHash: string | null;
+}
+export interface SearchFilters { actorId?: string; type?: string; limit?: number; }
+
+export async function searchEvents(pool: Pool, filters: SearchFilters): Promise<HistoricalEvent[]> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (filters.actorId) { params.push(filters.actorId); where.push(`(e.actor_id = $${params.length} OR e.target_id = $${params.length})`); }
+  if (filters.type) { params.push(filters.type); where.push(`e.type = $${params.length}`); }
+  params.push(filters.limit ?? 50);
+  const limitIdx = params.length;
+  const sql = `SELECT e.id, e.day, e.type, e.actor_id, e.target_id, e.zg_root_hash AS event_root,
+      e.payload, t.zg_root_hash AS trace_root, t.trace
+    FROM events e LEFT JOIN traces t ON t.decision_id = e.decision_id
+    ${where.length ? "WHERE " + where.join(" AND ") : ""}
+    ORDER BY e.day DESC, e.id DESC LIMIT $${limitIdx}`;
+  const r = await pool.query(sql, params);
+  return r.rows.map((x) => ({
+    id: x.id, day: x.day, type: x.type, actorId: x.actor_id, targetId: x.target_id ?? null,
+    reasoning: (x.payload?.reasoning as string) ?? (x.trace?.reasoning as string) ?? null,
+    rootHash: x.event_root ?? x.trace_root ?? null,
+  }));
+}
+
+export async function listEventTypes(pool: Pool): Promise<string[]> {
+  const r = await pool.query("SELECT DISTINCT type FROM events ORDER BY type");
+  return r.rows.map((x) => x.type as string);
+}
+
+export interface NarrativeView { id: string; subjectId: string; kind: string; day: number; text: string; rootHash: string | null; }
+
+export async function readNarrative(pool: Pool, subjectId: string, kind: string): Promise<NarrativeView | null> {
+  const r = await pool.query(
+    `SELECT id, subject_id, kind, day, text, zg_root_hash FROM narratives
+     WHERE subject_id = $1 AND kind = $2 ORDER BY day DESC, id DESC LIMIT 1`, [subjectId, kind]);
+  const x = r.rows[0];
+  if (!x) return null;
+  return { id: x.id, subjectId: x.subject_id, kind: x.kind, day: x.day, text: x.text, rootHash: x.zg_root_hash ?? null };
 }

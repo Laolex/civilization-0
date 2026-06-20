@@ -2,7 +2,7 @@ import type { Pool } from "pg";
 import { getPool } from "./pool";
 
 const WORLD_TABLES = [
-  "memberships", "organizations",
+  "narratives", "memberships", "organizations",
   "citizens", "goals", "relationships", "memories", "beliefs",
   "decisions", "decision_memories", "decision_beliefs", "events", "traces",
 ];

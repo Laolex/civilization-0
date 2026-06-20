@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getPool } from "@civ/persistence/src/pool";
 import { readWorldView, type WorldView } from "@civ/persistence/src/read";
 import { topCitizens, recent, population } from "../../lib/dashboard";
+import { ZeroGBadges } from "../../components/ZeroGBadges";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,6 +107,7 @@ export default async function WorldPage() {
                   )}
                 </span>
                 <span className="world-event-id mono">{e.id}</span>
+                <ZeroGBadges rootHash={e.rootHash} verified />
               </li>
             ))}
           </ul>
@@ -114,6 +116,7 @@ export default async function WorldPage() {
 
       <div className="build-cta-row" style={{ marginTop: 40 }}>
         <Link href="/orgs" className="landing-cta">Organizations →</Link>
+        <Link href="/history" className="landing-cta">History →</Link>
         <Link href="/" className="build-link">← Home</Link>
       </div>
     </main>

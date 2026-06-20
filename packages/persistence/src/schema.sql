@@ -84,3 +84,10 @@ CREATE TABLE IF NOT EXISTS memberships (
   PRIMARY KEY (org_id, citizen_id)
 );
 CREATE INDEX IF NOT EXISTS memberships_citizen_idx ON memberships (citizen_id);
+
+CREATE TABLE IF NOT EXISTS narratives (
+  id TEXT PRIMARY KEY, subject_id TEXT NOT NULL, kind TEXT NOT NULL,
+  day INT NOT NULL, text TEXT NOT NULL,
+  zg_root_hash TEXT, zg_tx_hash TEXT, created_day INT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS narratives_subject_idx ON narratives (subject_id);
