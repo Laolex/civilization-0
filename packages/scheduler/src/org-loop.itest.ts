@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { closePool, getPool, migrate, resetWorld, OrgRepository } from "@civ/persistence";
+import { closePool, getPool, migrate, resetWorld, OrgRepository, readOrg } from "@civ/persistence";
 import { FakeBrain } from "@civ/brain";
 import { FakeStorage } from "@civ/storage";
 import { ExplainabilityService } from "@civ/explainability";
@@ -28,4 +28,21 @@ it("runOrgDay ticks an org and persists its 0G-path decision", async () => {
   expect(out.ticked).toContain("o1");
   const ev = await getPool().query("SELECT COUNT(*)::int c FROM events WHERE actor_id = 'o1'");
   expect(ev.rows[0].c).toBeGreaterThanOrEqual(1);
+});
+
+it("org decision is read back via readOrg with a root hash (full chain)", async () => {
+  let n = 0; const idgen = () => `c-${n++}`;
+  const makeOrgTickDeps = (day: number): OrgTickDeps => ({
+    brain: new FakeBrain(() => ({ action: "partner", targetId: "marcus", reasoning: "form an alliance",
+      memoryWeights: {}, beliefWeights: {} })),
+    storage: new FakeStorage(), explain: new ExplainabilityService(new FakeStorage()),
+    clock: { day }, idgen,
+  });
+  await runOrgDay({ repo, makeOrgTickDeps, orgIds: ["o1"] }, 5);
+  const view = await readOrg(getPool(), "o1");
+  expect(view).not.toBeNull();
+  const partner = view!.decisions.find((d) => d.action === "partner");
+  expect(partner).toBeTruthy();
+  expect(partner!.reasoning).toBe("form an alliance");
+  expect(partner!.rootHash).toMatch(/^0xfake/);
 });
