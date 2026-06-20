@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getCurrentUser } from "../../lib/auth";
 import { getPool } from "@civ/persistence/src/pool";
 import { readWorlds } from "@civ/persistence/src/read";
+import { PLAN_LIMITS } from "@civ/persistence/src/world-write";
+import { AccountActions } from "../../components/AccountActions";
 
 export const runtime = "nodejs"; export const dynamic = "force-dynamic";
 
@@ -23,6 +25,7 @@ export default async function AccountPage() {
         <div className="world-stat-card"><span className="label">Worlds</span><span className="world-stat-value mono">{owned.length}</span></div>
         <div className="world-stat-card"><span className="label">API key</span><span className="world-stat-value mono">{user.hasApiKey ? "active" : "—"}</span></div>
       </div>
+      <AccountActions plan={user.plan} apiEligible={PLAN_LIMITS[user.plan].api} />
       <section className="world-section">
         <h2 className="world-section-h2">Your worlds</h2>
         {owned.length === 0 ? <p className="world-empty">No worlds yet.</p> : (
