@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import type { Citizen, Memory } from "@civ/shared";
+import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
 
@@ -32,6 +33,65 @@ export class WorldRepository {
       [m.id, m.citizenId, m.day, m.type, m.importance, m.summary,
        m.embedding.length ? toVector(m.embedding) : null, m.zgRootHash ?? null, m.zgTxHash ?? null],
     );
+  }
+
+  async persistTick(store: InMemoryWorldStore, result: TickResult, citizenId: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const d = result.decision;
+      await client.query(
+        `INSERT INTO decisions (id,citizen_id,goal_id,day,reasoning,action,target_id,brain_provider,brain_model,meta)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`,
+        [d.id, d.citizenId, d.goalId, d.day, d.reasoning, d.action, d.targetId, d.brainProvider, d.brainModel,
+         d.meta ? JSON.stringify(d.meta) : null]);
+
+      for (const dm of store.getDecisionMemories(d.id))
+        await client.query(`INSERT INTO decision_memories VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+          [dm.decisionId, dm.memoryId, dm.weight]);
+      for (const db of store.getDecisionBeliefs(d.id))
+        await client.query(`INSERT INTO decision_beliefs VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+          [db.decisionId, db.beliefId, db.weight]);
+
+      const e = result.event;
+      await client.query(
+        `INSERT INTO events (id,day,type,actor_id,target_id,decision_id,payload,zg_root_hash,zg_tx_hash)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
+        [e.id, e.day, e.type, e.actorId, e.targetId, e.decisionId, JSON.stringify(e.payload),
+         e.zgRootHash ?? null, e.zgTxHash ?? null]);
+
+      const t = result.trace;
+      await client.query(
+        `INSERT INTO traces (id,decision_id,trace,zg_root_hash,zg_tx_hash)
+         VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING`,
+        [t.id, t.decisionId, JSON.stringify(t.trace), t.zgRootHash ?? null, t.zgTxHash ?? null]);
+
+      if (result.storedMemory) await this.addMemoryRowOn(client, result.storedMemory);
+
+      for (const b of store.getBeliefs(citizenId))
+        await client.query(
+          `INSERT INTO beliefs (id,citizen_id,statement,confidence,source_memory_ids,updated_day)
+           VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO UPDATE SET statement=$3,confidence=$4,
+             source_memory_ids=$5,updated_day=$6`,
+          [b.id, b.citizenId, b.statement, b.confidence, JSON.stringify(b.sourceMemoryIds), b.updatedDay]);
+
+      for (const rel of store.getRelationships(citizenId))
+        await client.query(
+          `INSERT INTO relationships VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (citizen_id,other_id) DO UPDATE SET trust=$3,friendship=$4,influence=$5`,
+          [rel.citizenId, rel.otherId, rel.trust, rel.friendship, rel.influence]);
+
+      await client.query("COMMIT");
+    } catch (err) { await client.query("ROLLBACK"); throw err; }
+    finally { client.release(); }
+  }
+
+  private async addMemoryRowOn(client: import("pg").PoolClient, m: Memory): Promise<void> {
+    await client.query(
+      `INSERT INTO memories (id,citizen_id,day,type,importance,summary,embedding,zg_root_hash,zg_tx_hash)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
+      [m.id, m.citizenId, m.day, m.type, m.importance, m.summary,
+       m.embedding.length ? `[${m.embedding.join(",")}]` : null, m.zgRootHash ?? null, m.zgTxHash ?? null]);
   }
 
   async loadContext(citizenId: string): Promise<InMemoryWorldStore> {

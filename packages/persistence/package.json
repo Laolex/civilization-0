@@ -8,6 +8,11 @@
     "@civ/shared": "workspace:*",
     "@civ/store": "workspace:*",
     "@civ/memory": "workspace:*",
+    "@civ/engine": "workspace:*",
+    "@civ/beliefs": "workspace:*",
+    "@civ/explainability": "workspace:*",
+    "@civ/brain": "workspace:*",
+    "@civ/storage": "workspace:*",
     "pg": "^8.13.1"
   },
   "devDependencies": { "@types/pg": "^8.11.10" }

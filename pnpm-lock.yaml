@@ -67,12 +67,27 @@ importers:
 
   packages/persistence:
     dependencies:
+      '@civ/beliefs':
+        specifier: workspace:*
+        version: link:../beliefs
+      '@civ/brain':
+        specifier: workspace:*
+        version: link:../brain
+      '@civ/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@civ/explainability':
+        specifier: workspace:*
+        version: link:../explainability
       '@civ/memory':
         specifier: workspace:*
         version: link:../memory
       '@civ/shared':
         specifier: workspace:*
         version: link:../shared
+      '@civ/storage':
+        specifier: workspace:*
+        version: link:../storage
       '@civ/store':
         specifier: workspace:*
         version: link:../store
