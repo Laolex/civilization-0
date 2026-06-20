@@ -31,6 +31,17 @@ export function AccountActions({ plan, apiEligible }: { plan: string; apiEligibl
     }
   }
 
+  async function logout() {
+    setBusy("logout");
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/";
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusy(null);
+    }
+  }
+
   async function mintKey() {
     setBusy("key");
     setError(null);
@@ -93,6 +104,12 @@ export function AccountActions({ plan, apiEligible }: { plan: string; apiEligibl
       )}
 
       {error && <p className="world-empty" style={{ marginTop: 12 }}>Error: {error}</p>}
+
+      <div className="build-cta-row" style={{ marginTop: 24 }}>
+        <button type="button" className="build-link" disabled={busy !== null} onClick={logout}>
+          {busy === "logout" ? "Signing out…" : "Sign out"}
+        </button>
+      </div>
     </section>
   );
 }

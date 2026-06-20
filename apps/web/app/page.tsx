@@ -15,12 +15,20 @@ export default function Landing() {
         think on 0G Compute and whose history lives on 0G Storage.
       </p>
       <div className="landing-cta-row">
-        <Link href="/citizens/ada" className="landing-cta">
-          Enter Civilization →
+        <Link href="/world" className="landing-cta">
+          Enter the world →
         </Link>
         <Link href="/build" className="landing-cta-secondary">
           Add provenance to your agent →
         </Link>
+      </div>
+      <div className="build-cta-row" style={{ marginTop: 28, flexWrap: "wrap", gap: 14 }}>
+        <Link href="/citizens/ada" className="build-link">Ada's story</Link>
+        <Link href="/orgs" className="build-link">Organizations</Link>
+        <Link href="/history" className="build-link">History</Link>
+        <Link href="/worlds" className="build-link">Worlds</Link>
+        <Link href="/pricing" className="build-link">Pricing</Link>
+        <Link href="/login" className="build-link">Sign in</Link>
       </div>
     </main>
   );
