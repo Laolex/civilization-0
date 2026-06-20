@@ -118,6 +118,8 @@ export default async function WorldPage() {
         <Link href="/orgs" className="landing-cta">Organizations →</Link>
         <Link href="/history" className="landing-cta">History →</Link>
         <Link href="/citizens/new" className="landing-cta">+ New citizen</Link>
+        <Link href="/account" className="build-link">Account</Link>
+        <Link href="/pricing" className="build-link">Pricing</Link>
         <Link href="/" className="build-link">← Home</Link>
       </div>
     </main>
