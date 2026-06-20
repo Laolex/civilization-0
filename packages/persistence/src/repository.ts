@@ -3,6 +3,7 @@ import type { Citizen, Memory } from "@civ/shared";
 import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
+import { readWorldView, type WorldView } from "./read";
 
 function toVector(v: number[]): string { return `[${v.join(",")}]`; }
 function fromVector(s: string | null): number[] {
@@ -125,5 +126,9 @@ export class WorldRepository {
       trust: Number(rel.trust), friendship: Number(rel.friendship), influence: Number(rel.influence) });
 
     return store;
+  }
+
+  async readWorldView(limit: number): Promise<WorldView> {
+    return readWorldView(this.pool, limit);
   }
 }

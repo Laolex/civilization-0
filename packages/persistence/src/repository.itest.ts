@@ -47,3 +47,10 @@ it("persists a tick so its event survives a reload", async () => {
   const { rows } = await getPool().query("SELECT COUNT(*)::int AS c FROM events WHERE actor_id = 'ada'");
   expect(rows[0].c).toBeGreaterThanOrEqual(1);
 });
+
+it("readWorldView returns the day and a non-empty citizen list", async () => {
+  const view = await repo.readWorldView(10);
+  expect(typeof view.day).toBe("number");
+  expect(view.citizens.length).toBeGreaterThanOrEqual(1);
+  expect(view.citizens[0]).toHaveProperty("reputation");
+});

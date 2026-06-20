@@ -29,6 +29,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@civ/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
       '@civ/provenance':
         specifier: workspace:*
         version: link:../../packages/provenance
