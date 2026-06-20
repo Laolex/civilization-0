@@ -192,3 +192,53 @@ export async function readDecisionChainRaw(pool: Pool, citizenId: string): Promi
     rootHash: tr.rows[0]?.zg_root_hash ?? null, txHash: tr.rows[0]?.zg_tx_hash ?? null,
   };
 }
+
+export interface WorldRow { id: string; name: string; ownerId: string | null; visibility: string; populationCap: number; population: number; }
+
+export async function readWorlds(pool: Pool, ownerId?: string): Promise<WorldRow[]> {
+  const r = await pool.query(
+    `SELECT w.id, w.name, w.owner_id, w.visibility, w.population_cap,
+       (SELECT COUNT(*)::int FROM citizens c WHERE c.world_id = w.id) AS population
+     FROM worlds w
+     WHERE w.visibility = 'public' OR w.owner_id = $1
+     ORDER BY (w.id = 'genesis') DESC, w.created_at`, [ownerId ?? null]);
+  return r.rows.map((x) => ({ id: x.id, name: x.name, ownerId: x.owner_id ?? null, visibility: x.visibility, populationCap: x.population_cap, population: x.population }));
+}
+export async function readWorld(pool: Pool, id: string): Promise<WorldRow | null> {
+  const r = await pool.query(
+    `SELECT w.*, (SELECT COUNT(*)::int FROM citizens c WHERE c.world_id = w.id) AS population FROM worlds w WHERE w.id = $1`, [id]);
+  const x = r.rows[0];
+  return x ? { id: x.id, name: x.name, ownerId: x.owner_id ?? null, visibility: x.visibility, populationCap: x.population_cap, population: x.population } : null;
+}
+
+export interface ProvenanceExportRecord {
+  decisionId: string; agent: string; worldId: string; day: number;
+  decision: { action: string; targetId: string | null; reasoning: string };
+  drivers: { memories: { id: string; weight: number }[]; beliefs: { id: string; weight: number }[] };
+  verified: boolean; rootHash: string | null; verifyUrl: string | null;
+}
+export async function exportProvenance(pool: Pool, filters: { worldId?: string; citizenId?: string; limit?: number }): Promise<ProvenanceExportRecord[]> {
+  const where: string[] = []; const params: unknown[] = [];
+  if (filters.worldId) { params.push(filters.worldId); where.push(`c.world_id = $${params.length}`); }
+  if (filters.citizenId) { params.push(filters.citizenId); where.push(`d.citizen_id = $${params.length}`); }
+  params.push(filters.limit ?? 100); const lim = params.length;
+  const r = await pool.query(
+    `SELECT d.id, d.citizen_id, c.world_id, d.day, d.action, d.target_id, d.reasoning, d.meta, t.zg_root_hash
+     FROM decisions d JOIN citizens c ON c.id = d.citizen_id
+     LEFT JOIN traces t ON t.decision_id = d.id
+     ${where.length ? "WHERE " + where.join(" AND ") : ""}
+     ORDER BY d.day DESC, d.id DESC LIMIT $${lim}`, params);
+  const out: ProvenanceExportRecord[] = [];
+  for (const x of r.rows) {
+    const mems = await pool.query("SELECT memory_id, weight FROM decision_memories WHERE decision_id = $1 ORDER BY weight DESC", [x.id]);
+    const bels = await pool.query("SELECT belief_id, weight FROM decision_beliefs WHERE decision_id = $1 ORDER BY weight DESC", [x.id]);
+    const root = x.zg_root_hash ?? null;
+    out.push({
+      decisionId: x.id, agent: x.citizen_id, worldId: x.world_id, day: x.day,
+      decision: { action: x.action, targetId: x.target_id ?? null, reasoning: x.reasoning },
+      drivers: { memories: mems.rows.map((m) => ({ id: m.memory_id, weight: Number(m.weight) })), beliefs: bels.rows.map((b) => ({ id: b.belief_id, weight: Number(b.weight) })) },
+      verified: (x.meta ?? {}).verified === true, rootHash: root, verifyUrl: root ? "/verify/" + root : null,
+    });
+  }
+  return out;
+}
