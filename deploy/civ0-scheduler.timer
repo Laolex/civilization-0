@@ -2,11 +2,12 @@
 Description=Civilization-0 autonomous scheduler tick (every 2h, cost-gated)
 
 [Timer]
-# Autonomy capstone: the world keeps evolving on its own. Each fire advances one
-# world-day and ticks due citizens on real 0G. run-scheduler enforces the
-# ZG_BALANCE_FLOOR_OG floor (default 0.1) so it stops before the wallet empties.
-OnBootSec=2min
-OnUnitActiveSec=2h
+# Autonomy capstone: the world keeps evolving on its own. Fires every 2 hours on
+# wall-clock; each fire advances one world-day and ticks due citizens on real 0G.
+# run-scheduler enforces the ZG_BALANCE_FLOOR_OG floor (default 0.1) so it stops
+# before the wallet empties. OnCalendar is used (not OnUnitActiveSec) because the
+# latter computed NextElapse=infinity for this oneshot and never scheduled.
+OnCalendar=*-*-* 00/2:00:00
 Persistent=true
 
 [Install]
