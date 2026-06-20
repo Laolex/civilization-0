@@ -19,7 +19,8 @@
       "@civ/engine": ["packages/engine/src"],
       "@civ/zerog": ["packages/zerog/src"],
       "@civ/provenance": ["packages/provenance/src"],
-      "@civ/persistence": ["packages/persistence/src"]
+      "@civ/persistence": ["packages/persistence/src"],
+      "@civ/scheduler": ["packages/scheduler/src"]
     }
   }
 }

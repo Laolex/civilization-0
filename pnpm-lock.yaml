@@ -114,6 +114,33 @@ importers:
         specifier: workspace:*
         version: link:../zerog
 
+  packages/scheduler:
+    dependencies:
+      '@civ/beliefs':
+        specifier: workspace:*
+        version: link:../beliefs
+      '@civ/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@civ/explainability':
+        specifier: workspace:*
+        version: link:../explainability
+      '@civ/memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@civ/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@civ/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@civ/store':
+        specifier: workspace:*
+        version: link:../store
+      '@civ/zerog':
+        specifier: workspace:*
+        version: link:../zerog
+
   packages/shared: {}
 
   packages/storage: {}
