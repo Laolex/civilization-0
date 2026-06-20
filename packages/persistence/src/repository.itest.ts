@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { closePool, getPool } from "./pool";
 import { migrate } from "./migrate";
 import { WorldRepository } from "./repository";
+import { resetWorld } from "./testutil";
 import { runCitizenTick, type TickDeps } from "@civ/engine";
 import { FakeBrain } from "@civ/brain";
 import { FakeStorage } from "@civ/storage";
@@ -13,7 +14,7 @@ const repo = new WorldRepository();
 
 beforeAll(async () => {
   await migrate();
-  await getPool().query("DELETE FROM memories; DELETE FROM citizens;");
+  await resetWorld();
   await repo.upsertCitizenRow({ id: "ada", name: "Ada", occupation: "Engineer", age: 29,
     traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
     wealth: 0, reputation: 50, tier: 3, createdDay: 0 });
