@@ -4,6 +4,7 @@ import Link from "next/link";
 // engine/store/memory graph into the Next bundle.
 import { getPool } from "@civ/persistence/src/pool";
 import { readOrg, type OrgView } from "@civ/persistence/src/read";
+import { ZeroGBadges } from "../../../components/ZeroGBadges";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,13 +108,7 @@ export default async function OrgDetailPage({ params }: { params: { id: string }
                     </Link>
                   </span>
                 )}
-                {d.rootHash ? (
-                  <Link href={`/verify/${d.rootHash}`} className="world-id-link">
-                    verify on 0G ↗
-                  </Link>
-                ) : (
-                  <span className="world-event-id mono">no trace</span>
-                )}
+                <ZeroGBadges rootHash={d.rootHash} verified />
               </li>
             ))}
           </ul>

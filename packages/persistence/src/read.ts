@@ -8,7 +8,7 @@ import type { Pool } from "pg";
 export interface WorldView {
   day: number;
   citizens: { id: string; name: string; tier: number; reputation: number }[];
-  recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null }[];
+  recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null; rootHash: string | null }[];
 }
 
 export async function readWorldView(pool: Pool, limit: number): Promise<WorldView> {
@@ -17,7 +17,10 @@ export async function readWorldView(pool: Pool, limit: number): Promise<WorldVie
     "SELECT id, name, tier, reputation FROM citizens ORDER BY reputation DESC",
   );
   const es = await pool.query(
-    "SELECT id, day, type, actor_id, target_id FROM events ORDER BY day DESC, id DESC LIMIT $1",
+    `SELECT e.id, e.day, e.type, e.actor_id, e.target_id,
+       COALESCE(e.zg_root_hash, t.zg_root_hash) AS root_hash
+     FROM events e LEFT JOIN traces t ON t.decision_id = e.decision_id
+     ORDER BY e.day DESC, e.id DESC LIMIT $1`,
     [limit],
   );
   return {
@@ -34,6 +37,7 @@ export async function readWorldView(pool: Pool, limit: number): Promise<WorldVie
       type: r.type,
       actorId: r.actor_id,
       targetId: r.target_id,
+      rootHash: r.root_hash ?? null,
     })),
   };
 }
