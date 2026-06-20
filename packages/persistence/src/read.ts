@@ -80,3 +80,34 @@ export async function readOrgList(pool: Pool): Promise<{ id: string; name: strin
      GROUP BY o.id, o.name, o.kind, o.treasury ORDER BY o.name`);
   return r.rows.map((x) => ({ id: x.id, name: x.name, kind: x.kind, treasury: Number(x.treasury), memberCount: x.member_count }));
 }
+
+export interface HistoricalEvent {
+  id: string; day: number; type: string; actorId: string; targetId: string | null;
+  reasoning: string | null; rootHash: string | null;
+}
+export interface SearchFilters { actorId?: string; type?: string; limit?: number; }
+
+export async function searchEvents(pool: Pool, filters: SearchFilters): Promise<HistoricalEvent[]> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (filters.actorId) { params.push(filters.actorId); where.push(`(e.actor_id = $${params.length} OR e.target_id = $${params.length})`); }
+  if (filters.type) { params.push(filters.type); where.push(`e.type = $${params.length}`); }
+  params.push(filters.limit ?? 50);
+  const limitIdx = params.length;
+  const sql = `SELECT e.id, e.day, e.type, e.actor_id, e.target_id, e.zg_root_hash AS event_root,
+      e.payload, t.zg_root_hash AS trace_root, t.trace
+    FROM events e LEFT JOIN traces t ON t.decision_id = e.decision_id
+    ${where.length ? "WHERE " + where.join(" AND ") : ""}
+    ORDER BY e.day DESC, e.id DESC LIMIT $${limitIdx}`;
+  const r = await pool.query(sql, params);
+  return r.rows.map((x) => ({
+    id: x.id, day: x.day, type: x.type, actorId: x.actor_id, targetId: x.target_id ?? null,
+    reasoning: (x.payload?.reasoning as string) ?? (x.trace?.reasoning as string) ?? null,
+    rootHash: x.event_root ?? x.trace_root ?? null,
+  }));
+}
+
+export async function listEventTypes(pool: Pool): Promise<string[]> {
+  const r = await pool.query("SELECT DISTINCT type FROM events ORDER BY type");
+  return r.rows.map((x) => x.type as string);
+}
