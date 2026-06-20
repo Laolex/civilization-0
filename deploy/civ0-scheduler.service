@@ -7,5 +7,12 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/civilization-0/packages/scheduler
 EnvironmentFile=/opt/civilization-0/.env
+# Bound a tick: the 0G Storage uploader can wedge in an infinite "Waiting for
+# storage node to sync" retry loop when the indexer lags. Without this, a hung
+# oneshot stays active forever and systemd never schedules the next fire,
+# silently freezing autonomy. On timeout systemd kills the run and the timer
+# resumes on its normal cadence (the wedged tick is simply skipped — the
+# decision may have been reasoned on 0G but not persisted; no partial DB state).
+TimeoutStartSec=600
 # pnpm must be on PATH for the service user; adjust if needed.
 ExecStart=/usr/bin/env pnpm exec tsx --conditions require scripts/run-scheduler.ts --days 1
