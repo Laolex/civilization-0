@@ -5,7 +5,7 @@ describe("shared", () => {
   it("exposes the MVP action verbs", () => {
     expect(ALL_ACTIONS).toContain("start_company");
     expect(ALL_ACTIONS).toContain("betray");
-    expect(ALL_ACTIONS).toHaveLength(10);
+    expect(ALL_ACTIONS).toHaveLength(13);
   });
 
   it("computes cosine similarity", () => {

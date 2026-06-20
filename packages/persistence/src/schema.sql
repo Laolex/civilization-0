@@ -70,3 +70,17 @@ CREATE TABLE IF NOT EXISTS traces (
   id TEXT PRIMARY KEY, decision_id TEXT NOT NULL, trace JSONB NOT NULL,
   zg_root_hash TEXT, zg_tx_hash TEXT
 );
+
+CREATE TABLE IF NOT EXISTS organizations (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL,
+  founder_id TEXT NOT NULL, treasury NUMERIC NOT NULL DEFAULT 0,
+  reputation NUMERIC NOT NULL DEFAULT 0, goal TEXT NOT NULL DEFAULT '',
+  created_day INT NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS memberships (
+  org_id TEXT NOT NULL REFERENCES organizations(id),
+  citizen_id TEXT NOT NULL,
+  role TEXT NOT NULL, joined_day INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (org_id, citizen_id)
+);
+CREATE INDEX IF NOT EXISTS memberships_citizen_idx ON memberships (citizen_id);

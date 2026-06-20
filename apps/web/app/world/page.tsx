@@ -113,6 +113,7 @@ export default async function WorldPage() {
       </section>
 
       <div className="build-cta-row" style={{ marginTop: 40 }}>
+        <Link href="/orgs" className="landing-cta">Organizations →</Link>
         <Link href="/" className="build-link">← Home</Link>
       </div>
     </main>
