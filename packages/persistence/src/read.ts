@@ -154,3 +154,41 @@ export async function readGoals(pool: Pool, id: string): Promise<GoalView[]> {
     "SELECT id, kind, description, progress, active FROM goals WHERE citizen_id = $1 ORDER BY id", [id]);
   return r.rows.map((x) => ({ id: x.id, kind: x.kind, description: x.description, progress: Number(x.progress), active: x.active }));
 }
+
+export interface RawChainMemory { id: string; summary: string; day: number; weight: number; }
+export interface RawChainBelief { id: string; statement: string; confidence: number; weight: number; }
+export interface RawDecisionChain {
+  decisionId: string; action: string; targetId: string | null; reasoning: string;
+  provider: string; model: string; verified: boolean;
+  memories: RawChainMemory[]; beliefs: RawChainBelief[];
+  event: { id: string; day: number; type: string; targetId: string | null } | null;
+  rootHash: string | null; txHash: string | null;
+}
+
+export async function readDecisionChainRaw(pool: Pool, citizenId: string): Promise<RawDecisionChain | null> {
+  const d = await pool.query(
+    "SELECT * FROM decisions WHERE citizen_id = $1 ORDER BY day DESC, id DESC LIMIT 1", [citizenId]);
+  const dec = d.rows[0];
+  if (!dec) return null;
+  const mems = await pool.query(
+    `SELECT m.id, m.summary, m.day, dm.weight FROM decision_memories dm
+     JOIN memories m ON m.id = dm.memory_id WHERE dm.decision_id = $1 ORDER BY dm.weight DESC`, [dec.id]);
+  const bels = await pool.query(
+    `SELECT b.id, b.statement, b.confidence, db.weight FROM decision_beliefs db
+     JOIN beliefs b ON b.id = db.belief_id WHERE db.decision_id = $1 ORDER BY db.weight DESC`, [dec.id]);
+  const ev = await pool.query(
+    "SELECT id, day, type, target_id FROM events WHERE decision_id = $1 ORDER BY id LIMIT 1", [dec.id]);
+  const tr = await pool.query(
+    "SELECT zg_root_hash, zg_tx_hash FROM traces WHERE decision_id = $1 ORDER BY id LIMIT 1", [dec.id]);
+  const meta = (dec.meta ?? {}) as Record<string, unknown>;
+  const e = ev.rows[0];
+  return {
+    decisionId: dec.id, action: dec.action, targetId: dec.target_id ?? null, reasoning: dec.reasoning,
+    provider: (meta.provider as string) ?? dec.brain_provider, model: (meta.model as string) ?? dec.brain_model,
+    verified: meta.verified === true,
+    memories: mems.rows.map((r) => ({ id: r.id, summary: r.summary, day: r.day, weight: Number(r.weight) })),
+    beliefs: bels.rows.map((r) => ({ id: r.id, statement: r.statement, confidence: Number(r.confidence), weight: Number(r.weight) })),
+    event: e ? { id: e.id, day: e.day, type: e.type, targetId: e.target_id ?? null } : null,
+    rootHash: tr.rows[0]?.zg_root_hash ?? null, txHash: tr.rows[0]?.zg_tx_hash ?? null,
+  };
+}
