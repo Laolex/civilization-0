@@ -91,3 +91,21 @@ CREATE TABLE IF NOT EXISTS narratives (
   zg_root_hash TEXT, zg_tx_hash TEXT, created_day INT NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS narratives_subject_idx ON narratives (subject_id);
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
+  plan TEXT NOT NULL DEFAULT 'free', api_key_hash TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions (user_id);
+CREATE TABLE IF NOT EXISTS worlds (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, owner_id TEXT,
+  visibility TEXT NOT NULL DEFAULT 'public', population_cap INT NOT NULL DEFAULT 100,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO worlds (id,name,owner_id,visibility,population_cap)
+  VALUES ('genesis','Genesis',NULL,'public',1000) ON CONFLICT (id) DO NOTHING;
+ALTER TABLE citizens ADD COLUMN IF NOT EXISTS world_id TEXT NOT NULL DEFAULT 'genesis';
+CREATE INDEX IF NOT EXISTS citizens_world_idx ON citizens (world_id);
