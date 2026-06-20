@@ -1,5 +1,6 @@
 import type { OrgRepository } from "@civ/persistence";
 import { runOrgTick, type OrgTickDeps } from "./org-tick";
+import { economicDelta } from "./economics";
 
 export interface OrgDayDeps {
   repo: OrgRepository;
@@ -13,7 +14,7 @@ export async function runOrgDay(deps: OrgDayDeps, day: number): Promise<{ ticked
     const ctx = await deps.repo.loadOrgContext(orgId);
     if (!ctx) continue;
     const result = await runOrgTick(ctx, deps.makeOrgTickDeps(day));
-    await deps.repo.persistOrgTick(orgId, result.event, result.trace, 0);
+    await deps.repo.persistOrgTick(orgId, result.event, result.trace, economicDelta(result.action));
     ticked.push(orgId);
   }
   return { ticked };

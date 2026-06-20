@@ -17,6 +17,11 @@ export class WorldRepository {
     await this.pool.query("UPDATE world_state SET day = $1 WHERE id = 1", [day]);
   }
 
+  async adjustWealth(citizenId: string, delta: number): Promise<void> {
+    if (!delta) return;
+    await this.pool.query("UPDATE citizens SET wealth = GREATEST(0, wealth + $2) WHERE id = $1", [citizenId, delta]);
+  }
+
   async upsertCitizenRow(c: Citizen): Promise<void> {
     await this.pool.query(
       `INSERT INTO citizens (id,name,occupation,age,traits,wealth,reputation,tier,created_day)
