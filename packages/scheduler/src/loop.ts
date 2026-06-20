@@ -3,6 +3,7 @@ import type { TickDeps, TickResult } from "@civ/engine";
 import { runCitizenTick } from "@civ/engine";
 import type { WorldRepository, OrgRepository } from "@civ/persistence";
 import { selectTickers, type Ticker } from "./select";
+import { economicDelta } from "./economics";
 
 export interface OrgEffects {
   orgRepo: OrgRepository;
@@ -41,6 +42,7 @@ export async function runDay(deps: DayDeps, day: number): Promise<{ ticked: stri
     const store = await deps.repo.loadContext(id);
     const result = await runCitizenTick(deps.makeTickDeps(store, day), id);
     await deps.repo.persistTick(store, result, id);
+    await deps.repo.adjustWealth(id, economicDelta(result.decision.action));
     if (deps.orgEffects) await applyOrgEffect(deps.orgEffects, result, id, day);
   }
   await deps.repo.setDay(day);
