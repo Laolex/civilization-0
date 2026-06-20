@@ -1,8 +1,12 @@
 [Unit]
-Description=Run Civilization-0 scheduler daily
+Description=Civilization-0 autonomous scheduler tick (every 2h, cost-gated)
 
 [Timer]
-OnCalendar=daily
+# Autonomy capstone: the world keeps evolving on its own. Each fire advances one
+# world-day and ticks due citizens on real 0G. run-scheduler enforces the
+# ZG_BALANCE_FLOOR_OG floor (default 0.1) so it stops before the wallet empties.
+OnBootSec=2min
+OnUnitActiveSec=2h
 Persistent=true
 
 [Install]
