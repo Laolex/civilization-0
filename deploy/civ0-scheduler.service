@@ -16,3 +16,6 @@ EnvironmentFile=/opt/civilization-0/.env
 TimeoutStartSec=600
 # pnpm must be on PATH for the service user; adjust if needed.
 ExecStart=/usr/bin/env pnpm exec tsx --conditions require scripts/run-scheduler.ts --days 1
+# Runs after every tick (success, failure, OR timeout kill) — appends a one-line
+# status to /opt/civilization-0/tick.log for at-a-glance autonomy monitoring.
+ExecStopPost=/opt/civilization-0/packages/scheduler/scripts/tick-log.sh
