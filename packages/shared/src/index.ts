@@ -2,11 +2,13 @@ export type Tier = 1 | 2 | 3;
 
 export type ActionType =
   | "meet" | "friend" | "argue" | "hire" | "quit_job"
-  | "start_company" | "partner" | "betray" | "invest" | "work";
+  | "start_company" | "partner" | "betray" | "invest" | "work"
+  | "create_org" | "join" | "leave";
 
 export const ALL_ACTIONS: ActionType[] = [
   "meet", "friend", "argue", "hire", "quit_job",
   "start_company", "partner", "betray", "invest", "work",
+  "create_org", "join", "leave",
 ];
 
 export type MemoryType = "event" | "relationship" | "goal" | "observation";
@@ -74,6 +76,14 @@ export interface DecisionTrace {
   };
   zgRootHash?: string; zgTxHash?: string;
 }
+
+export type OrgKind = "guild" | "company" | "council";
+export type OrgRole = "founder" | "leader" | "member";
+export interface Organization {
+  id: string; name: string; kind: OrgKind; founderId: string;
+  treasury: number; reputation: number; goal: string; createdDay: number;
+}
+export interface Membership { orgId: string; citizenId: string; role: OrgRole; joinedDay: number; }
 
 export interface WorldState {
   day: number; economy: Record<string, number>; headline: string;
