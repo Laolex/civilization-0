@@ -667,7 +667,7 @@ a { color: inherit; text-decoration: none; }
   padding: 12px 18px;
   font-size: 12px;
   font-family: var(--mono);
-  color: #b05252;
+  color: var(--down);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -1075,8 +1075,9 @@ a { color: inherit; text-decoration: none; }
 }
 
 .zg-badges { display: inline-flex; gap: 6px; align-items: center; }
-.zg-badge { font-size: 11px; padding: 2px 7px; border-radius: 4px; border: 1px solid #2b3a5c; color: #9db4e8; text-decoration: none; }
-.zg-badge-storage:hover { border-color: #4f7ef8; color: #4f7ef8; }
+.zg-badge { font-size: 11px; padding: 2px 7px; border-radius: 5px; border: 1px solid rgba(79, 126, 248, 0.3); color: var(--accent); text-decoration: none; }
+.zg-badge-compute { background: var(--accent-dim); }
+.zg-badge-storage:hover { border-color: var(--accent); background: var(--accent-dim); }
 
 /* Landing live proof strip — turns the pitch into evidence. */
 .proof-strip {
@@ -1178,7 +1179,7 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px; border-bottom: 1px solid var(--slate);
 }
-.lw-box-name { font-size: 14px; color: #cdd9f5; }
+.lw-box-name { font-size: 14px; color: var(--fg); }
 .lw-box-meta { font-size: 11px; opacity: 0.7; }
 .lw-lock { margin-right: 6px; }
 
@@ -1236,7 +1237,7 @@ a { color: inherit; text-decoration: none; }
 .lw-label {
   position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
   white-space: nowrap; font-size: 11px; padding: 2px 7px; border-radius: 5px;
-  background: #0d1424; border: 1px solid var(--slate); color: #cdd9f5;
+  background: var(--panel); border: 1px solid var(--slate); color: var(--fg);
   opacity: 0; pointer-events: none; transition: opacity 0.12s ease;
 }
 .lw-dot:hover .lw-label, .lw-org:hover .lw-label { opacity: 1; }
@@ -1260,10 +1261,10 @@ a { color: inherit; text-decoration: none; }
 }
 .auth-or {
   align-self: stretch; display: flex; align-items: center; justify-content: center;
-  position: relative; color: #6b7aa0; font-size: 12px;
+  position: relative; color: var(--muted); font-size: 12px;
 }
 .auth-or span {
-  background: var(--bg, #070b14); padding: 4px 0; z-index: 1;
+  background: var(--bg); padding: 4px 0; z-index: 1;
 }
 .auth-or::before {
   content: ""; position: absolute; top: 0; bottom: 0; width: 1px; background: var(--slate);
@@ -2472,7 +2473,7 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
   background: var(--accent-dim);
   border-radius: var(--radius-md);
 }
-.map-exhibit strong { color: var(--fg); font-weight: 650; }
+.map-exhibit strong { color: var(--fg); font-weight: 600; }
 .map-exhibit-link { color: var(--accent); white-space: nowrap; }
 .map-exhibit-link:hover { text-decoration: underline; }
 
@@ -2486,9 +2487,9 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
 }
 .moat-q {
   margin: 0 0 22px;
-  font-size: 19px;
+  font-size: 1.25rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   color: var(--fg);
 }
 .moat-cols {
@@ -2502,7 +2503,9 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
   background: var(--panel);
   border: 1px solid var(--slate);
 }
-.moat-col--trust { opacity: 0.78; }
+/* "Database" reads as the lesser option via a recessed surface + quieter text
+   — never opacity, which would drag body text below the 4.5:1 AA floor. */
+.moat-col--trust { background: var(--panel-alt); }
 .moat-col--verify { border-color: rgba(79, 126, 248, 0.45); background: var(--accent-dim); }
 .moat-col-tag {
   display: inline-block;
@@ -2514,6 +2517,7 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
 }
 .moat-col--verify .moat-col-tag { color: var(--accent); }
 .moat-col-body { margin: 0; font-size: 14px; line-height: 1.62; color: var(--muted-hi); }
+.moat-col--trust .moat-col-body { color: var(--muted); }
 .moat-col-body strong { color: var(--fg); }
 .moat-kicker {
   margin: 20px 0 0;
@@ -2527,8 +2531,8 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .verticals { margin: 40px 0 8px; }
 .verticals-h2 {
   margin: 0 0 8px;
-  font-size: 22px;
-  font-weight: 650;
+  font-size: 1.25rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--fg);
 }
@@ -2550,11 +2554,14 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
   border-radius: var(--radius-lg);
   background: var(--panel);
 }
+/* Category label is neutral; the accent payoff is the final "Verifiable trace"
+   step (.is-proof) — keeps the Signal Rule (accent = the 0G moment). */
 .vertical-tag {
   display: block;
   font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--fg);
   margin-bottom: 16px;
 }
 .vertical-chain { list-style: none; margin: 0; padding: 0; }
