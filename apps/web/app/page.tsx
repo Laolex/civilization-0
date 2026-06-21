@@ -42,8 +42,8 @@ export default async function Landing() {
       )}
 
       <div className="landing-cta-row">
-        <Link href="/world" className="landing-cta">
-          Enter the world →
+        <Link href="/map" className="landing-cta">
+          Enter the living world →
         </Link>
         <Link href="/build" className="landing-cta-secondary">
           Add provenance to your agent →

@@ -265,3 +265,23 @@ export async function readProofStats(pool: Pool): Promise<ProofStats> {
     latestRootHash: l.rows[0]?.zg_root_hash ?? null,
   };
 }
+
+export interface MapEntity { id: string; name: string; tier: number; }
+export interface MapOrg { id: string; name: string; }
+export interface MapWorld {
+  id: string; name: string; visibility: string;
+  citizens: MapEntity[]; orgs: MapOrg[];
+}
+
+/** Every world with its inhabitants — drives the living-world map (pg-only, keyless). */
+export async function readWorldMap(pool: Pool): Promise<MapWorld[]> {
+  const w = await pool.query("SELECT id, name, visibility FROM worlds ORDER BY (id = 'genesis') DESC, created_at");
+  const c = await pool.query("SELECT id, name, tier, world_id FROM citizens");
+  const o = await pool.query(
+    "SELECT o.id, o.name, c.world_id FROM organizations o JOIN citizens c ON c.id = o.founder_id");
+  return w.rows.map((world) => ({
+    id: world.id, name: world.name, visibility: world.visibility,
+    citizens: c.rows.filter((x) => x.world_id === world.id).map((x) => ({ id: x.id, name: x.name, tier: x.tier })),
+    orgs: o.rows.filter((x) => x.world_id === world.id).map((x) => ({ id: x.id, name: x.name })),
+  }));
+}
