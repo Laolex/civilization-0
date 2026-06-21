@@ -50,12 +50,8 @@ export default async function Landing() {
         </Link>
       </div>
       <div className="build-cta-row" style={{ marginTop: 28, flexWrap: "wrap", gap: 14 }}>
-        <Link href="/citizens/ada" className="build-link">Ada's story</Link>
-        <Link href="/orgs" className="build-link">Organizations</Link>
-        <Link href="/history" className="build-link">History</Link>
-        <Link href="/worlds" className="build-link">Worlds</Link>
-        <Link href="/pricing" className="build-link">Pricing</Link>
-        <Link href="/login" className="build-link">Sign in</Link>
+        <Link href="/citizens/ada" className="build-link">Follow Ada's story →</Link>
+        <Link href="/history" className="build-link">Browse the full history →</Link>
       </div>
     </main>
   );
