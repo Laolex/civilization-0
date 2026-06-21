@@ -1,6 +1,6 @@
 export interface WorldView {
   day: number;
-  citizens: { id: string; name: string; tier: number; reputation: number }[];
+  citizens: { id: string; name: string; tier: number; reputation: number; wealth?: number; occupation?: string }[];
   recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null; rootHash?: string | null }[];
 }
 

@@ -46,14 +46,14 @@ export function WalletLogin() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <button type="button" className="landing-cta" onClick={connect} disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
+    <div className="form">
+      <button type="button" className="btn btn-ghost" onClick={connect} disabled={busy} style={{ width: "100%" }}>
         {busy ? "Check your wallet…" : "⬡ Connect wallet"}
       </button>
-      <p className="world-empty" style={{ textAlign: "left", fontSize: 12, opacity: 0.6, margin: 0 }}>
+      <p className="form-hint">
         Sign a message to prove ownership — no gas, no transaction. Your citizens live under your wallet.
       </p>
-      {error && <p className="world-error-msg mono">{error}</p>}
+      {error && <p className="form-error">{error}</p>}
     </div>
   );
 }

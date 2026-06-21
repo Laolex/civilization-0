@@ -61,19 +61,20 @@ export function AccountActions({ plan, apiEligible }: { plan: string; apiEligibl
   }
 
   return (
-    <section className="world-section">
-      <h2 className="world-section-h2">Plan & API</h2>
-      <div className="build-cta-row">
+    <section className="cz-section">
+      <div className="section-head"><h2 className="section-title">Plan &amp; API</h2></div>
+
+      <div className="account-plans">
         {PLANS.map((p) =>
           p === plan ? (
-            <span key={p} className="landing-cta" aria-disabled style={{ opacity: 0.6 }}>
-              {p} (current)
+            <span key={p} className="plan-current">
+              {p}<span className="plan-current-tag">current</span>
             </span>
           ) : (
             <button
               key={p}
               type="button"
-              className="build-link"
+              className="btn btn-ghost"
               disabled={busy !== null}
               onClick={() => changePlan(p)}
             >
@@ -84,13 +85,8 @@ export function AccountActions({ plan, apiEligible }: { plan: string; apiEligibl
       </div>
 
       {apiEligible && (
-        <div className="build-cta-row" style={{ marginTop: 16 }}>
-          <button
-            type="button"
-            className="landing-cta"
-            disabled={busy !== null}
-            onClick={mintKey}
-          >
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <button type="button" className="btn btn-primary" disabled={busy !== null} onClick={mintKey}>
             {busy === "key" ? "Minting…" : "Mint API key"}
           </button>
         </div>
@@ -98,15 +94,15 @@ export function AccountActions({ plan, apiEligible }: { plan: string; apiEligibl
 
       {key && (
         <div style={{ marginTop: 16 }}>
-          <p className="world-empty">Copy this key now — it is shown only once.</p>
-          <pre className="verify-pre mono">{key}</pre>
+          <p className="form-hint" style={{ marginBottom: 8 }}>Copy this key now — it is shown only once.</p>
+          <pre className="key-reveal mono">{key}</pre>
         </div>
       )}
 
-      {error && <p className="world-empty" style={{ marginTop: 12 }}>Error: {error}</p>}
+      {error && <p className="form-error" style={{ marginTop: 12 }}>{error}</p>}
 
-      <div className="build-cta-row" style={{ marginTop: 24 }}>
-        <button type="button" className="build-link" disabled={busy !== null} onClick={logout}>
+      <div className="btn-row" style={{ marginTop: 22 }}>
+        <button type="button" className="btn btn-subtle" disabled={busy !== null} onClick={logout}>
           {busy === "logout" ? "Signing out…" : "Sign out"}
         </button>
       </div>

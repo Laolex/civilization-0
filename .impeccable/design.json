@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-21T00:00:00Z",
+  "title": "Design System: Civilization-0",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Signal Blue", "canonical": "#4f7ef8", "tonalRamp": ["#0c1430", "#142455", "#1d3a8f", "#2a55c8", "#4f7ef8", "#7a9efa", "#a6c0fc", "#d3e0fe"] },
+      "accent-dim": { "role": "primary", "displayName": "Signal Wash", "canonical": "#4f7ef81f", "tonalRamp": ["#0c1430", "#142455", "#1d3a8f", "#2a55c8", "#4f7ef8", "#7a9efa", "#a6c0fc", "#d3e0fe"] },
+      "org": { "role": "secondary", "displayName": "Organization Violet", "canonical": "#c792ea", "tonalRamp": ["#241433", "#3c2055", "#5a307f", "#7c45a8", "#9d62c8", "#c792ea", "#d9b3f1", "#ecd9f8"] },
+      "tier-1": { "role": "tertiary", "displayName": "Tier One (Dim)", "canonical": "#5b6b95", "tonalRamp": ["#171b26", "#23293a", "#33405b", "#45557d", "#5b6b95", "#8390b3", "#aab4cf", "#d2d8e7"] },
+      "tier-2": { "role": "tertiary", "displayName": "Tier Two", "canonical": "#6f9bff", "tonalRamp": ["#101a36", "#19295c", "#23408f", "#3258c8", "#6f9bff", "#94b4ff", "#bccfff", "#e0e9ff"] },
+      "tier-3": { "role": "tertiary", "displayName": "Tier Three (Brightest)", "canonical": "#9db4ff", "tonalRamp": ["#1a2240", "#283566", "#3b4f99", "#5570cc", "#7d96ff", "#9db4ff", "#c2d0ff", "#e6ecff"] },
+      "down": { "role": "semantic", "displayName": "Fault Red", "canonical": "#c46a6a", "tonalRamp": ["#2c1414", "#451f1f", "#6a3030", "#964545", "#c46a6a", "#d59494", "#e6bcbc", "#f3dede"] },
+      "bg": { "role": "neutral", "displayName": "Room Black", "canonical": "#0a0b0d", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#1c2026", "#252a32", "#323844", "#7d8490", "#e4e6ea"] },
+      "panel-alt": { "role": "neutral", "displayName": "Recessed", "canonical": "#0e1012", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#1c2026", "#252a32", "#323844", "#7d8490", "#e4e6ea"] },
+      "panel": { "role": "neutral", "displayName": "Surface", "canonical": "#131518", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#1c2026", "#252a32", "#323844", "#7d8490", "#e4e6ea"] },
+      "slate": { "role": "neutral", "displayName": "Divider", "canonical": "#252a32", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#1c2026", "#252a32", "#323844", "#7d8490", "#e4e6ea"] },
+      "slate-hi": { "role": "neutral", "displayName": "Divider Bright", "canonical": "#323844", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#1c2026", "#252a32", "#323844", "#7d8490", "#e4e6ea"] },
+      "fg": { "role": "neutral", "displayName": "Ink", "canonical": "#e4e6ea", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#1c2026", "#252a32", "#323844", "#7d8490", "#e4e6ea"] },
+      "muted-hi": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#9aa0a8", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#252a32", "#4a525c", "#7d8490", "#9aa0a8", "#e4e6ea"] },
+      "muted": { "role": "neutral", "displayName": "Ink Quiet", "canonical": "#7d8490", "tonalRamp": ["#0a0b0d", "#0e1012", "#131518", "#252a32", "#4a525c", "#7d8490", "#9aa0a8", "#e4e6ea"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page headlines only; states facts, never shouts (ceiling ~2.4rem)." },
+      "title": { "displayName": "Title", "purpose": "Lowercase section heads; never a tracked uppercase eyebrow." },
+      "body": { "displayName": "Body", "purpose": "Subheads and prose; cap measure at 64ch." },
+      "label": { "displayName": "Label", "purpose": "Small uppercase instrument labels above readouts, in Ink Quiet." },
+      "mono": { "displayName": "Mono / Numeric", "purpose": "All numbers, hashes, IDs, timestamps, evidence — the voice of the machine." }
+    },
+    "shadows": [
+      { "name": "tier-glow", "value": "0 0 12px 0 rgba(120,150,255,0.7)", "purpose": "Emitted halo under a Tier 3 citizen dot; dimmer steps for lower tiers." },
+      { "name": "org-glow", "value": "0 0 10px -2px #c792ea", "purpose": "Halo under the organization mark." },
+      { "name": "zerog-glow", "value": "0 0 22px -4px rgba(79,126,248,0.45)", "purpose": "Pulsing glow marking 0G Compute / 0G Storage moments in a causal chain." },
+      { "name": "ambient-room", "value": "radial-gradient(60% 70% at 30% 40%, rgba(79,126,248,0.14), transparent 70%)", "purpose": "Faint blue room light pooled behind headlines; atmosphere, not a component shadow." }
+    ],
+    "motion": [
+      { "name": "ease-out-quint", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Default easing for state transitions and the live pulse." },
+      { "name": "live-pulse", "value": "board-pulse 1.9s var(--ease-out-quint) infinite", "purpose": "The one piece of ambient motion: the live dot's expanding, fading ring." },
+      { "name": "state-transition", "value": "0.13s ease", "purpose": "Hover/border/background transitions on rows, chips, and links (130ms)." }
+    ],
+    "breakpoints": [
+      { "name": "stack", "value": "600px" },
+      { "name": "wide", "value": "760px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default action button; quiet at rest, signal-blue on hover/focus.",
+      "html": "<a class=\"ds-btn\" href=\"#\">◉ Living map</a>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border:1px solid #323844; border-radius:8px; background:#131518; color:#e4e6ea; font-size:13px; font-weight:500; font-family:ui-sans-serif,system-ui,sans-serif; text-decoration:none; transition:border-color .14s ease, background .14s ease; } .ds-btn:hover { border-color:#4f7ef8; background:#4f7ef81f; } .ds-btn:focus-visible { outline:2px solid #4f7ef8; outline-offset:2px; }"
+    },
+    {
+      "name": "Compute Chip",
+      "kind": "chip",
+      "refersTo": "chip-compute",
+      "description": "Non-interactive proof badge: reasoned + verified on 0G Compute.",
+      "html": "<span class=\"ds-chip-compute\">0G&nbsp;Compute&nbsp;✓</span>",
+      "css": ".ds-chip-compute { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:10.5px; letter-spacing:.02em; padding:3px 8px; border-radius:5px; color:#4f7ef8; background:#4f7ef81f; border:1px solid rgba(79,126,248,0.2); white-space:nowrap; }"
+    },
+    {
+      "name": "Storage Chip (verify link)",
+      "kind": "chip",
+      "refersTo": "chip-storage",
+      "description": "Interactive proof badge linking to keyless /verify; fills on hover.",
+      "html": "<a class=\"ds-chip-storage\" href=\"#\">0G&nbsp;Storage&nbsp;✓</a>",
+      "css": ".ds-chip-storage { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:10.5px; letter-spacing:.02em; padding:3px 8px; border-radius:5px; color:#4f7ef8; border:1px solid rgba(79,126,248,0.32); text-decoration:none; white-space:nowrap; transition:background .13s ease, border-color .13s ease; } .ds-chip-storage:hover { background:#4f7ef81f; border-color:#4f7ef8; } .ds-chip-storage:focus-visible { outline:2px solid #4f7ef8; outline-offset:2px; }"
+    },
+    {
+      "name": "Pending Chip",
+      "kind": "chip",
+      "refersTo": "chip-pending",
+      "description": "Honest absence of an archived trace — dashed, never a fake check.",
+      "html": "<span class=\"ds-chip-pending\">0G&nbsp;Storage&nbsp;· pending</span>",
+      "css": ".ds-chip-pending { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:10.5px; letter-spacing:.02em; padding:3px 8px; border-radius:5px; color:#7d8490; border:1px dashed #323844; white-space:nowrap; }"
+    },
+    {
+      "name": "Instrument Cell",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "One readout cell of the instrument cluster: label, large mono value, quiet foot.",
+      "html": "<div class=\"ds-cell\"><span class=\"ds-cell-label\">Reasoned + verified</span><span class=\"ds-cell-value\">22</span><span class=\"ds-cell-foot\">decisions on 0G Compute, TEE ✓</span></div>",
+      "css": ".ds-cell { display:flex; flex-direction:column; gap:5px; background:#0e1012; padding:16px 20px; border:1px solid #252a32; border-radius:12px; font-family:ui-sans-serif,system-ui,sans-serif; max-width:220px; } .ds-cell-label { font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#7d8490; } .ds-cell-value { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:1.75rem; font-weight:600; line-height:1; color:#4f7ef8; } .ds-cell-foot { font-size:11.5px; color:#9aa0a8; line-height:1.45; }"
+    },
+    {
+      "name": "Feed Row",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "A reasoning-ticker row: day, subject sentence, proof chips, hash. Hover recesses.",
+      "html": "<div class=\"ds-feed-row\"><span class=\"ds-feed-day\">D7</span><span class=\"ds-feed-line\"><a class=\"ds-feed-actor\" href=\"#\">Ada Chen</a><span class=\"ds-feed-verb\">invested in</span><a class=\"ds-feed-actor\" href=\"#\">Marcus</a></span><span class=\"ds-chip-compute\">0G&nbsp;Compute&nbsp;✓</span><span class=\"ds-feed-hash\">0xaa02…7922</span></div>",
+      "css": ".ds-feed-row { display:flex; align-items:center; gap:16px; padding:11px 16px; background:#131518; border:1px solid #252a32; border-radius:12px; font-family:ui-sans-serif,system-ui,sans-serif; transition:background .13s ease; } .ds-feed-row:hover { background:#0e1012; } .ds-feed-day { font-size:12px; font-weight:600; color:#7d8490; } .ds-feed-line { font-size:.875rem; color:#9aa0a8; display:flex; gap:6px; align-items:baseline; } .ds-feed-actor { color:#e4e6ea; font-weight:600; text-decoration:none; border-bottom:1px solid transparent; } .ds-feed-actor:hover { color:#4f7ef8; border-bottom-color:#4f7ef8; } .ds-feed-verb { color:#7d8490; } .ds-feed-hash { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:11px; color:#7d8490; margin-left:auto; } .ds-chip-compute { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:10.5px; padding:3px 8px; border-radius:5px; color:#4f7ef8; background:#4f7ef81f; border:1px solid rgba(79,126,248,0.2); white-space:nowrap; }"
+    },
+    {
+      "name": "Citizen Roster Row",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "Tier-coded inhabitant row: glowing tier dot, name, occupation, reputation, wealth.",
+      "html": "<div class=\"ds-roster-row\"><span class=\"ds-tier ds-tier-3\"></span><a class=\"ds-roster-name\" href=\"#\">Ada Chen</a><span class=\"ds-roster-occ\">Founder</span><span class=\"ds-roster-rep\">71</span><span class=\"ds-roster-wealth\">$41,910</span></div>",
+      "css": ".ds-roster-row { display:grid; grid-template-columns:11px minmax(0,auto) minmax(0,1fr) 48px 88px; align-items:center; gap:12px; padding:9px 6px; background:#131518; border-bottom:1px solid #252a32; font-family:ui-sans-serif,system-ui,sans-serif; } .ds-tier { width:9px; height:9px; border-radius:50%; } .ds-tier-3 { background:#9db4ff; box-shadow:0 0 12px 0 rgba(120,150,255,0.7); } .ds-roster-name { font-size:.9rem; font-weight:600; color:#e4e6ea; text-decoration:none; white-space:nowrap; } .ds-roster-name:hover { color:#4f7ef8; } .ds-roster-occ { font-size:12.5px; color:#7d8490; } .ds-roster-rep { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:13px; color:#e4e6ea; text-align:right; } .ds-roster-wealth { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:13px; color:#9aa0a8; text-align:right; }"
+    },
+    {
+      "name": "Live Dot",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "The single ambient motion: a breathing pulse that says the world is live now.",
+      "html": "<span class=\"ds-live\"><span class=\"ds-live-core\"></span><span class=\"ds-live-ring\"></span></span><span class=\"ds-live-label\">LIVE on 0G</span>",
+      "css": ".ds-live { position:relative; display:inline-flex; width:9px; height:9px; vertical-align:middle; } .ds-live-core { width:9px; height:9px; border-radius:50%; background:#4f7ef8; } .ds-live-ring { position:absolute; inset:0; border-radius:50%; background:#4f7ef8; animation:ds-pulse 1.9s cubic-bezier(0.22,1,0.36,1) infinite; } .ds-live-label { font-family:ui-monospace,SF Mono,Menlo,monospace; font-size:11px; font-weight:700; letter-spacing:.16em; color:#4f7ef8; margin-left:10px; } @keyframes ds-pulse { 0%{transform:scale(1);opacity:.55;} 70%{transform:scale(3.2);opacity:0;} 100%{transform:scale(3.2);opacity:0;} } @media (prefers-reduced-motion:reduce){ .ds-live-ring{animation:none;opacity:0;} }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Observatory",
+    "overview": "Civilization-0's interface is a darkened control room over a world that runs without you. The operator observes and verifies an autonomous AI society advancing itself on 0G — never commanding it. Every surface is an instrument: a live pulse that never stops, a stream of telemetry, readouts whose numbers each trace back to an independently-checkable record. Dark is the ambient light of the room, not a style choice; one electric-blue accent reads as a signal on what is live, verified, or on-0G. Density is the point — a tool fluent users trust — but it must always feel inhabited, never a sterile admin panel.",
+    "keyCharacteristics": [
+      "Near-black observatory canvas; one electric-blue signal accent reserved for live / verified / 0G.",
+      "Instrument density over decoration — monospace numerics, hairline dividers, telemetry streams.",
+      "Flat surfaces, depth by tonal layering and glow — never drop shadows.",
+      "Evidence-led: every number is a door to its keyless proof.",
+      "Alive, not sterile: a single breathing pulse, tier/org color coding, atmospheric accent glow."
+    ],
+    "rules": [
+      { "name": "The Signal Rule", "body": "Blue is a signal, not a brand color. It appears only on what is live, verified, on-0G, a link, or a primary number — never decoration, never inactive states. If blue is on more than ~10% of a screen, something inactive has stolen the signal.", "section": "colors" },
+      { "name": "The No-Costume Rule", "body": "Forbidden: gradients, glassmorphism, neon, hexagon motifs, 3D coins. Credibility is carried by real hashes, verified marks, and keyless recovery — not by looking 'crypto'.", "section": "colors" },
+      { "name": "The Mono-Is-Data Rule", "body": "If it's a number, hash, ID, timestamp, or on-chain evidence, it is monospace. If it's prose, it's sans. The seam between the two is how the eye separates narration from machine record.", "section": "typography" },
+      { "name": "The No-Eyebrow Rule", "body": "Section identity is a lowercase Title plus a small mono meta on the right. The tracked-uppercase kicker above every section is forbidden.", "section": "typography" },
+      { "name": "The Emitted-Light Rule", "body": "Depth is darkness (tonal layers) or light (glow) — never a gray drop shadow. If a surface looks like it's floating on a soft gray shadow, recess it or remove the shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep Signal Blue (#4f7ef8) rare — live, verified, on-0G, links, primary numbers only (≤10% of any screen).",
+      "Do set every number, hash, ID, and timestamp in mono; keep prose in sans.",
+      "Do build depth from tonal layers (#0a0b0d → #0e1012 → #131518) and glow.",
+      "Do make each stat a door to its proof — link counts and hashes through to keyless /verify.",
+      "Do keep one breath of motion (the live pulse) and tier/org color so dense data still feels inhabited.",
+      "Do give every interactive element a :focus-visible Signal-Blue ring and a reduced-motion fallback for all motion."
+    ],
+    "donts": [
+      "Don't ship a generic crypto/web3 look — no gradients, glassmorphism, neon, hexagon grids, 3D coins.",
+      "Don't ship a sterile corporate dashboard — no lifeless gray KPI-card grid; use the instrument cluster.",
+      "Don't use gradient text, background-clip:text, or side-stripe border-left accents anywhere.",
+      "Don't put a tracked uppercase eyebrow above sections.",
+      "Don't cast gray drop shadows to fake elevation — recess the surface or use glow.",
+      "Don't show a fake verified ✓ or 0G Storage ✓ when there is no trace; use the dashed pending chip."
+    ]
+  }
+}
