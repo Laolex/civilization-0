@@ -2040,6 +2040,38 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
 }
 .org-card:hover .org-card-go { opacity: 1; }
 
+/* ── /orgs/[id] detail ───────────────────────────────────────────────────── */
+.org-title-mark {
+  display: inline-block;
+  width: 20px; height: 10px;
+  margin-right: 12px;
+  vertical-align: middle;
+  background: var(--org);
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 0 12px -2px var(--org);
+}
+.org-kind-tag { color: var(--org); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.orgdec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.orgdec {
+  padding: 14px 16px;
+  border: 1px solid var(--slate);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  transition: border-color 0.13s ease;
+}
+.orgdec:hover { border-color: var(--slate-hi); }
+.orgdec-head { display: flex; align-items: center; gap: 14px; }
+.orgdec-line { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; font-size: 0.9rem; color: var(--muted-hi); }
+.orgdec-action { color: var(--fg); font-weight: 600; }
+.orgdec-reason { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted-hi); max-width: 74ch; text-wrap: pretty; }
+.orgdec-hash { display: inline-block; margin-top: 8px; font-size: 11px; color: var(--muted); }
+
+@media (max-width: 600px) {
+  .orgdec-head { flex-wrap: wrap; row-gap: 8px; }
+  .orgdec-head .feed-proof { width: 100%; }
+}
+
 /* ── Form fields (system control; first used on /history) ────────────────── */
 .field {
   font-family: var(--sans);
