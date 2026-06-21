@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { WalletLogin } from "../../components/WalletLogin";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,20 +24,44 @@ export default function LoginPage() {
   }
 
   const field = { padding: "9px 11px", background: "#0d1424", border: "1px solid #2b3a5c", borderRadius: 6, color: "#cdd9f5", width: "100%" } as const;
+
   return (
-    <main className="world-root" style={{ maxWidth: 560 }}>
+    <main className="world-root" style={{ maxWidth: 760 }}>
       <p className="landing-eyebrow">Log in · civilization-0</p>
       <h1 className="world-h1">Welcome back</h1>
-      <p className="world-empty" style={{ textAlign: "left" }}>Sign in to manage your worlds, plan, and Research API key.</p>
-      <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 20 }}>
-        <input style={field} type="email" placeholder="Email" value={form.email} onChange={set("email")} required />
-        <input style={field} type="password" placeholder="Password" value={form.password} onChange={set("password")} required />
-        {error && <p className="world-error-msg mono">{error}</p>}
-        <div className="build-cta-row">
-          <button type="submit" className="landing-cta" disabled={busy}>{busy ? "Signing in…" : "Log in"}</button>
-          <Link href="/signup" className="build-link">Sign up</Link>
-        </div>
-      </form>
+      <p className="world-empty" style={{ textAlign: "left" }}>
+        Sign in to manage your worlds, plan, and Research API key — with email, or with your wallet.
+      </p>
+
+      <div className="auth-split">
+        {/* Email */}
+        <section className="auth-panel">
+          <h2 className="auth-panel-title">Email</h2>
+          <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+            <input style={field} type="email" placeholder="Email" value={form.email} onChange={set("email")} required />
+            <input style={field} type="password" placeholder="Password" value={form.password} onChange={set("password")} required />
+            {error && <p className="world-error-msg mono">{error}</p>}
+            <button type="submit" className="landing-cta" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
+              {busy ? "Signing in…" : "Log in"}
+            </button>
+            <Link href="/signup" className="build-link" style={{ textAlign: "center" }}>New here? Sign up</Link>
+          </form>
+        </section>
+
+        {/* Divider */}
+        <div className="auth-or"><span>or</span></div>
+
+        {/* Wallet */}
+        <section className="auth-panel">
+          <h2 className="auth-panel-title">Wallet</h2>
+          <WalletLogin />
+        </section>
+      </div>
+
+      <div className="build-cta-row" style={{ marginTop: 28 }}>
+        <Link href="/map" className="build-link">← The living world</Link>
+        <Link href="/" className="build-link">Home</Link>
+      </div>
     </main>
   );
 }

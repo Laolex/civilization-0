@@ -2,7 +2,7 @@ import { randomBytes, scryptSync, timingSafeEqual, createHash } from "node:crypt
 import { getPool } from "./pool";
 
 export type Plan = "free" | "pro" | "research";
-export interface User { id: string; email: string; plan: Plan; hasApiKey: boolean; }
+export interface User { id: string; email: string | null; wallet: string | null; plan: Plan; hasApiKey: boolean; }
 
 function hashPassword(pw: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -16,7 +16,40 @@ function checkPassword(pw: string, stored: string): boolean {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
-const toUser = (r: any): User => ({ id: r.id, email: r.email, plan: r.plan as Plan, hasApiKey: !!r.api_key_hash });
+const toUser = (r: any): User => ({ id: r.id, email: r.email ?? null, wallet: r.wallet_address ?? null, plan: r.plan as Plan, hasApiKey: !!r.api_key_hash });
+
+/** The exact message a wallet signs to prove ownership. Server + client must agree. */
+export function walletSignInMessage(address: string, nonce: string): string {
+  return `Sign in to Civilization-0\n\nWallet: ${address.toLowerCase()}\nNonce: ${nonce}`;
+}
+
+/** Issue (or refresh) a single-use, 10-minute nonce for a wallet address. */
+export async function createWalletNonce(address: string): Promise<string> {
+  const nonce = randomBytes(16).toString("hex");
+  await getPool().query(
+    `INSERT INTO wallet_nonces (address, nonce, expires_at) VALUES ($1, $2, now() + interval '10 minutes')
+     ON CONFLICT (address) DO UPDATE SET nonce = $2, expires_at = now() + interval '10 minutes'`,
+    [address.toLowerCase(), nonce]);
+  return nonce;
+}
+
+/** Atomically validate + consume a nonce (single-use). */
+export async function consumeWalletNonce(address: string, nonce: string): Promise<boolean> {
+  const r = await getPool().query(
+    "DELETE FROM wallet_nonces WHERE address = $1 AND nonce = $2 AND expires_at > now() RETURNING address",
+    [address.toLowerCase(), nonce]);
+  return r.rowCount === 1;
+}
+
+/** Find-or-create a user keyed by wallet address (sign-in and sign-up in one). */
+export async function upsertWalletUser(address: string): Promise<User> {
+  const a = address.toLowerCase();
+  const existing = await getPool().query("SELECT * FROM users WHERE wallet_address = $1", [a]);
+  if (existing.rows[0]) return toUser(existing.rows[0]);
+  const id = randomBytes(8).toString("hex");
+  const r = await getPool().query("INSERT INTO users (id, wallet_address) VALUES ($1, $2) RETURNING *", [id, a]);
+  return toUser(r.rows[0]);
+}
 
 export async function createUser(email: string, password: string): Promise<User> {
   const id = randomBytes(8).toString("hex");
