@@ -7,14 +7,14 @@ import type { Pool } from "pg";
  */
 export interface WorldView {
   day: number;
-  citizens: { id: string; name: string; tier: number; reputation: number }[];
+  citizens: { id: string; name: string; tier: number; reputation: number; wealth: number; occupation: string }[];
   recentEvents: { id: string; day: number; type: string; actorId: string; targetId: string | null; rootHash: string | null }[];
 }
 
 export async function readWorldView(pool: Pool, limit: number): Promise<WorldView> {
   const ws = await pool.query("SELECT day FROM world_state WHERE id = 1");
   const cs = await pool.query(
-    "SELECT id, name, tier, reputation FROM citizens ORDER BY reputation DESC",
+    "SELECT id, name, tier, reputation, wealth, occupation FROM citizens ORDER BY reputation DESC",
   );
   const es = await pool.query(
     `SELECT e.id, e.day, e.type, e.actor_id, e.target_id,
@@ -30,6 +30,8 @@ export async function readWorldView(pool: Pool, limit: number): Promise<WorldVie
       name: r.name,
       tier: r.tier,
       reputation: Number(r.reputation),
+      wealth: Number(r.wealth),
+      occupation: r.occupation,
     })),
     recentEvents: es.rows.map((r) => ({
       id: r.id,

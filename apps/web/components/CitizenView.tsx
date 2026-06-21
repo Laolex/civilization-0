@@ -4,6 +4,9 @@ import type { Citizen, Relationship } from "@civ/shared";
 import type { CausalChainView, TimelineEntry } from "../lib/types";
 import { CausalChain } from "./CausalChain";
 import { VerifyOnZeroG } from "./VerifyOnZeroG";
+import { LiveDot } from "./LiveDot";
+
+const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 
 export function CitizenView({ citizen, relationships, story, timeline, chains, confidenceByDecision }: {
   citizen: Citizen; relationships: Relationship[]; story: string;
@@ -15,65 +18,86 @@ export function CitizenView({ citizen, relationships, story, timeline, chains, c
   const chain = selected ? chains[selected] : null;
 
   return (
-    <main className="citizen-root">
-      <header>
-        <h1 className="citizen-header-name">{citizen.name}</h1>
-        <p className="citizen-header-meta">
-          {citizen.occupation} &middot; age {citizen.age} &middot; wealth {citizen.wealth}
+    <main className="board">
+      <header className="board-head">
+        <div className="board-live">
+          <LiveDot />
+          <span className="board-live-label mono">LIVE on 0G</span>
+          <span className="board-live-cadence">reasoning live on 0G · pick a decision to trace it</span>
+        </div>
+        <h1 className="board-title">{citizen.name}</h1>
+        <p className="cz-meta mono">
+          <span>{citizen.occupation}</span>
+          <span>· age {citizen.age}</span>
+          <span>· wealth {money(citizen.wealth)}</span>
         </p>
       </header>
 
-      <section className="story-panel">
-        <h2 className="label">Story</h2>
-        <p className="story-text">{story}</p>
+      <section className="cz-section panel">
+        <div className="section-head"><h2 className="section-title">Story</h2></div>
+        <p className="life-line">{story}</p>
       </section>
 
-      <section className="decision-grid">
-        <div>
-          <h2 className="label" style={{ marginBottom: 8 }}>Timeline</h2>
-          <ol className="timeline-list">
-            {timeline.map((t) => {
-              const active = !!(t.decisionId && t.decisionId === selected);
-              const clickable = !!t.decisionId;
-              return (
-                <li key={t.eventId}>
-                  <button
-                    onClick={() => t.decisionId && setSelected(t.decisionId)}
-                    disabled={!t.decisionId}
-                    className={`timeline-item-btn${clickable ? " clickable" : ""}${active ? " active" : ""}`}
-                  >
-                    <div className="timeline-day">Day {t.day}</div>
-                    <div className="timeline-label">
-                      <span>{t.label}</span>
-                      {t.decisionId && <span className="timeline-why">Why? →</span>}
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
+      <section className="cz-section">
+        <div className="section-head">
+          <h2 className="section-title">The decision trace</h2>
+          <span className="section-meta mono">click a moment → see why</span>
         </div>
-
-        <div>
-          <div className="chain-panel-header">
-            <h2 className="label">Causal chain</h2>
-            {selected && confidenceByDecision[selected] !== undefined && (
-              <span className="confidence-badge">{confidenceByDecision[selected]}% confidence</span>
-            )}
+        <div className="decision-grid">
+          <div>
+            <span className="cz-col-label mono">Timeline</span>
+            <ol className="timeline-list">
+              {timeline.map((t) => {
+                const active = !!(t.decisionId && t.decisionId === selected);
+                const clickable = !!t.decisionId;
+                return (
+                  <li key={t.eventId}>
+                    <button
+                      onClick={() => t.decisionId && setSelected(t.decisionId)}
+                      disabled={!t.decisionId}
+                      className={`timeline-item-btn${clickable ? " clickable" : ""}${active ? " active" : ""}`}
+                    >
+                      <div className="timeline-day">Day {t.day}</div>
+                      <div className="timeline-label">
+                        <span>{t.label}</span>
+                        {t.decisionId && <span className="timeline-why">Why? →</span>}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
-          {chain
-            ? <CausalChain chain={chain} storageExtra={<VerifyOnZeroG rootHash={chain.rootHash ?? ""} />} />
-            : <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Select a decision event to trace its causal chain.</p>
-          }
+
+          <div>
+            <div className="chain-panel-header">
+              <span className="cz-col-label mono">Causal chain</span>
+              {selected && confidenceByDecision[selected] !== undefined && (
+                <span className="confidence-badge">{confidenceByDecision[selected]}% confidence</span>
+              )}
+            </div>
+            {chain
+              ? <CausalChain chain={chain} storageExtra={<VerifyOnZeroG rootHash={chain.rootHash ?? ""} />} />
+              : <p className="cz-col-empty">Select a decision event to trace its causal chain.</p>
+            }
+          </div>
         </div>
       </section>
 
       {relationships.length > 0 && (
-        <section>
-          <h2 className="label" style={{ marginBottom: 8 }}>Relationships</h2>
-          <ul className="relationships-list">
+        <section className="cz-section">
+          <div className="section-head"><h2 className="section-title">Relationships</h2></div>
+          <ul className="rel-list">
             {relationships.map((r) => (
-              <li key={r.otherId}>{r.otherId} — trust {r.trust} · friendship {r.friendship}</li>
+              <li key={r.otherId}>
+                <div className="rel-row">
+                  <span className="rel-name">{r.otherId}</span>
+                  <span className="rel-stats">
+                    <span>trust {r.trust}</span>
+                    <span>friendship {r.friendship}</span>
+                  </span>
+                </div>
+              </li>
             ))}
           </ul>
         </section>
