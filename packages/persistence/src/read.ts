@@ -242,3 +242,26 @@ export async function exportProvenance(pool: Pool, filters: { worldId?: string; 
   }
   return out;
 }
+
+export interface ProofStats {
+  day: number;
+  verifiedDecisions: number;
+  archivedTraces: number;
+  latestRootHash: string | null;
+}
+
+/** Live proof-of-liveness stats for the landing hero (pg-only, keyless). */
+export async function readProofStats(pool: Pool): Promise<ProofStats> {
+  const d = await pool.query("SELECT day FROM world_state WHERE id = 1");
+  const v = await pool.query("SELECT count(*)::int c FROM decisions WHERE meta->>'verified' = 'true'");
+  const t = await pool.query("SELECT count(*)::int c FROM traces WHERE zg_root_hash IS NOT NULL");
+  const l = await pool.query(
+    `SELECT t.zg_root_hash FROM traces t JOIN decisions d ON d.id = t.decision_id
+     WHERE t.zg_root_hash IS NOT NULL ORDER BY d.day DESC, d.id DESC LIMIT 1`);
+  return {
+    day: d.rows[0]?.day ?? 0,
+    verifiedDecisions: v.rows[0]?.c ?? 0,
+    archivedTraces: t.rows[0]?.c ?? 0,
+    latestRootHash: l.rows[0]?.zg_root_hash ?? null,
+  };
+}
