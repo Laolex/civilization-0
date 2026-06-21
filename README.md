@@ -17,6 +17,30 @@ We prove it with the hardest possible demo: **a persistent AI society that runs 
 
 > **Why 0G is load-bearing:** the reasoning runs on 0G Compute (with cryptographic `verified: true`), the permanent record lives on 0G Storage, and verification is keyless against the network. A normal app would just ask you to trust its database. This one doesn't.
 
+### The whole idea in one API call
+
+```ts
+import { createProvenance } from "@civ/provenance";
+
+const civ = createProvenance();   // wraps 0G Compute + 0G Storage
+
+const result = await civ.trace({
+  agent: "trading-agent-01",
+  question: "ETH broke resistance — long, short, or hold?",
+  memories: [{ id: "m1", summary: "ETH broke $3.2k on volume", importance: 8 }],
+  beliefs:  [{ id: "b1", statement: "breakouts on volume follow through", confidence: 0.7 }],
+  actions:  ["open_long", "open_short", "hold"],
+});
+
+result.decision;    // { action: "open_long", reasoning: "…" }   ← reasoned on 0G Compute
+result.drivers;     // { memories: [{ id: "m1", weight: 0.8 }], beliefs: [...] }  ← what ACTUALLY drove it
+result.verified;    // true   ← TEE-verified on 0G Compute
+result.rootHash;    // 0x…    ← archived to 0G Storage
+result.verifyUrl;   // /verify/0x…  ← a public, keyless link anyone can check
+```
+
+`drivers` is the moat: not "here's everything we retrieved," but the **brain-weighted subset that the decision actually hinged on** — recorded and made verifiable.
+
 ---
 
 ## See it live
@@ -31,6 +55,37 @@ The world is **running autonomously right now** — a systemd timer advances it 
 
 ### Verify a real decision yourself
 Every "0G Storage ✓" badge in the app is a live link to `/verify/<root>`. Pick any decision on `/world` or `/history`, click its badge, and watch the record get pulled back from 0G Storage by its hash alone.
+
+The verifier holds **no private key** — it recovers the record straight from the network:
+
+```ts
+import { createVerifier } from "@civ/provenance";
+
+// indexer = a public 0G Storage endpoint. No signer, no trust in the operator.
+const verify = createVerifier("https://indexer-storage-testnet-turbo.0g.ai");
+const record = await verify(rootHash);   // ← pulled from 0G Storage by hash alone
+
+record.decision;   // what the agent chose
+record.drivers;    // what drove it
+record.verified;   // true — proven on 0G Compute
+```
+
+A **real record**, exported live from the Research API (`GET /api/provenance/records`) — a user-created citizen that reasoned on 0G:
+
+```json
+{
+  "decisionId": "mqmu8p0s-0",
+  "agent": "atlas-zoe", "worldId": "32e426b4aaeb", "day": 1,
+  "decision": {
+    "action": "start_company", "targetId": null,
+    "reasoning": "Atlas Zoe is ambitious and has a strong desire to lead Atlas to greatness. Starting a company aligns with these traits."
+  },
+  "drivers": { "memories": [{ "id": "atlas-zoe-backstory", "weight": 0.8 }], "beliefs": [] },
+  "verified": true,
+  "rootHash": "0xb087c39758e48903d6d737c27d2da94869f68c93877e189aad4bfd413c1afc7b",
+  "verifyUrl": "/verify/0xb087c39758e48903d6d737c27d2da94869f68c93877e189aad4bfd413c1afc7b"
+}
+```
 
 ---
 
@@ -76,6 +131,21 @@ apps/
 ```
 
 **Design rule held across the whole build:** the engine (`packages/engine`) and world store (`packages/store`) are **byte-for-byte unchanged** by every feature — orgs, history, user citizens, monetization, economics all sit *around* the core, never inside it. The web read path is **keyless** (no private key ever touches the browser-facing server) and **pg-light** (never bundles the heavy engine graph).
+
+How an **organization reasons as an agent** without touching the engine — it's projected into a citizen persona and run through the exact same 0G brain:
+
+```ts
+/** Synthesize a Citizen persona so an org can reason through the existing brain. */
+export function orgPersona(org: Organization, day: number): Citizen {
+  return {
+    id: org.id, name: org.name, occupation: `${org.kind} organization`,
+    age: Math.max(1, day - org.createdDay),
+    traits: { ambition: 80, empathy: 50, loyalty: 70, curiosity: 60, discipline: 75, riskTolerance: 55 },
+    wealth: org.treasury, reputation: org.reputation, tier: 2, createdDay: org.createdDay,
+  };
+}
+// → the org's decision then archives to 0G exactly like a citizen's. Same verifiable path, zero engine changes.
+```
 
 **Stack:** Node 20, pnpm 9.15.4, TypeScript, Next.js 14 (App Router), Postgres 16 + pgvector, `@0gfoundation/0g-{storage,compute}-ts-sdk`. ~95 unit tests + ~37 integration tests, all green.
 
