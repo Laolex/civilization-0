@@ -63,9 +63,13 @@ function NodeCard({ node, extra }: { node: ChainNode; extra?: ReactNode }) {
 
 export function CausalChain({ chain, storageExtra }: { chain: CausalChainView; storageExtra?: ReactNode }) {
   return (
-    <div className="chain-root">
+    <div className="chain-root chain-animated">
       {chain.nodes.map((node, i) => (
-        <div key={node.kind} className="chain-node-wrap">
+        <div
+          key={node.kind}
+          className={`chain-node-wrap kind-${node.kind}`}
+          style={{ ["--i" as string]: i }}
+        >
           <NodeCard node={node} extra={node.kind === "storage" ? storageExtra : undefined} />
           {i < chain.nodes.length - 1 && (
             <div className="chain-connector">

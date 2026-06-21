@@ -29,7 +29,7 @@ export default async function Landing() {
 
       {stats && (
         <div className="proof-strip">
-          <span className="proof-live mono">● LIVE on 0G</span>
+          <span className="proof-live mono">LIVE on 0G</span>
           <span className="proof-stat"><b className="mono">Day {stats.day}</b> · self-running</span>
           <span className="proof-stat"><b className="mono">{stats.verifiedDecisions}</b> decisions reasoned + verified on 0G Compute</span>
           <span className="proof-stat"><b className="mono">{stats.archivedTraces}</b> traces archived on 0G Storage</span>

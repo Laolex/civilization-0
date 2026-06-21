@@ -1030,3 +1030,77 @@ a { color: inherit; text-decoration: none; }
 .proof-live { color: var(--accent); font-size: 12px; letter-spacing: 0.08em; }
 .proof-stat { font-size: 14px; opacity: 0.9; }
 .proof-stat b { color: var(--accent); }
+
+/* ── Causal chain: cinematic staged reveal ─────────────────────────────
+   The chain is the product's whole thesis ("see why the AI decided"), so it
+   should unfold like a proof: each node arrives in sequence, the flow draws
+   itself between them, and the 0G Compute / 0G Storage moments glow. */
+.chain-animated .chain-node-wrap {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: chain-node-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 0.18s);
+}
+@keyframes chain-node-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* the connector "draws" downward just after its node lands */
+.chain-animated .chain-connector-line {
+  transform-origin: top center;
+  transform: scaleY(0);
+  animation: chain-line-draw 0.28s ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 0.18s + 0.32s);
+}
+.chain-animated .chain-connector-arrow {
+  opacity: 0;
+  animation: chain-fade-in 0.2s ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 0.18s + 0.52s);
+}
+@keyframes chain-line-draw { to { transform: scaleY(1); } }
+@keyframes chain-fade-in { to { opacity: 1; } }
+
+/* the 0G moments (compute + storage) breathe a soft accent glow — the
+   reasoning and the proof are the points that matter. */
+.chain-animated .kind-compute .node-card,
+.chain-animated .kind-storage .node-card {
+  animation: chain-glow 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.18s + 0.9s);
+}
+@keyframes chain-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 126, 248, 0.0); border-color: rgba(79,126,248,0.35); }
+  50%      { box-shadow: 0 0 22px -4px rgba(79, 126, 248, 0.45); border-color: rgba(79,126,248,0.7); }
+}
+
+/* the "Verified" mark pops once it appears — the earned money-shot */
+.chain-animated .node-verified-mark {
+  animation: verified-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 0.18s + 0.5s);
+  transform: scale(0.6);
+  opacity: 0;
+}
+@keyframes verified-pop { to { transform: scale(1); opacity: 1; } }
+
+/* live proof-strip dot pulse */
+.proof-live { position: relative; }
+.proof-live::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); margin-right: 7px; vertical-align: middle;
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,126,248,0.55); opacity: 1; }
+  50%      { box-shadow: 0 0 0 6px rgba(79,126,248,0); opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chain-animated .chain-node-wrap,
+  .chain-animated .chain-connector-line,
+  .chain-animated .chain-connector-arrow,
+  .chain-animated .kind-compute .node-card,
+  .chain-animated .kind-storage .node-card,
+  .chain-animated .node-verified-mark,
+  .proof-live::before {
+    animation: none; opacity: 1; transform: none;
+  }
+}
