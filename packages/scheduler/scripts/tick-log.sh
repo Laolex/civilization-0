@@ -8,6 +8,9 @@ set -uo pipefail
 LOG=/opt/civilization-0/tick.log
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 RESULT="${SERVICE_RESULT:-unknown}"   # systemd sets this: success | timeout | exit-code | signal | ...
-DAY=$(psql "$DATABASE_URL" -tAc "SELECT day FROM world_state WHERE id=1" 2>/dev/null | tr -d '[:space:]')
-EVENTS=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM events" 2>/dev/null | tr -d '[:space:]')
+# node-postgres accepts sslmode=no-verify (skip CA check); libpq/psql does not —
+# map it to libpq's "require" (encrypt, don't verify) so this log query connects.
+PSQL_URL="${DATABASE_URL/sslmode=no-verify/sslmode=require}"
+DAY=$(psql "$PSQL_URL" -tAc "SELECT day FROM world_state WHERE id=1" 2>/dev/null | tr -d '[:space:]')
+EVENTS=$(psql "$PSQL_URL" -tAc "SELECT count(*) FROM events" 2>/dev/null | tr -d '[:space:]')
 printf '%s  result=%-9s day=%-4s events=%s\n' "$TS" "$RESULT" "${DAY:-?}" "${EVENTS:-?}" >> "$LOG"
