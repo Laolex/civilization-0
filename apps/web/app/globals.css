@@ -1104,3 +1104,86 @@ a { color: inherit; text-decoration: none; }
     animation: none; opacity: 1; transform: none;
   }
 }
+
+/* ── Living world map: citizens drift as glowing dots in a dark void ──────
+   Click a dot to open that citizen's life + the decisions that got them there.
+   Population grows → more dots; worlds multiply → more boxes. Data-driven. */
+.lw-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px; margin: 8px 0 28px;
+}
+.lw-box {
+  border: 1px solid var(--slate); border-radius: 14px; overflow: hidden;
+  background: var(--panel);
+}
+.lw-box.lw-private { border-color: rgba(79,126,248,0.35); }
+.lw-box-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--slate);
+}
+.lw-box-name { font-size: 14px; color: #cdd9f5; }
+.lw-box-meta { font-size: 11px; opacity: 0.7; }
+.lw-lock { margin-right: 6px; }
+
+.lw-void {
+  position: relative; height: 260px; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 30%, rgba(79,126,248,0.08), transparent 60%),
+    radial-gradient(60% 60% at 80% 90%, rgba(124,92,248,0.06), transparent 70%),
+    #070b14;
+}
+.lw-void::after { /* faint vignette so dots glow against the dark */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 70px 10px rgba(0,0,0,0.55);
+}
+.lw-empty {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 12px; opacity: 0.4;
+}
+
+/* a citizen = a glowing circle; size + brightness by tier */
+.lw-dot {
+  position: absolute; border-radius: 50%; display: block;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  box-shadow: 0 0 10px -1px var(--accent);
+  animation: lw-drift var(--dur, 12s) ease-in-out var(--delay, 0s) infinite alternate;
+  cursor: pointer; transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.lw-tier-1 { background: #5b6b95; box-shadow: 0 0 8px -2px #5b6b95; opacity: 0.85; }
+.lw-tier-2 { background: #6f9bff; box-shadow: 0 0 10px -1px #6f9bff; }
+.lw-tier-3 { background: #9db4ff; box-shadow: 0 0 16px 0 rgba(120,150,255,0.8); }
+
+/* an organization = a semicircle (visually distinct from citizens) */
+.lw-org {
+  position: absolute; display: block; width: 24px; height: 24px;
+  transform: translate(-50%, -50%);
+  animation: lw-drift var(--dur, 12s) ease-in-out var(--delay, 0s) infinite alternate;
+  cursor: pointer;
+}
+.lw-org-shape {
+  display: block; width: 24px; height: 12px;
+  background: #c792ea; border-radius: 12px 12px 0 0;
+  box-shadow: 0 0 12px -2px #c792ea;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+@keyframes lw-drift {
+  from { margin-left: 0; margin-top: 0; }
+  to   { margin-left: var(--dx, 0); margin-top: var(--dy, 0); }
+}
+
+/* hover: dot brightens + name label appears */
+.lw-dot:hover { box-shadow: 0 0 18px 2px var(--accent); transform: translate(-50%, -50%) scale(1.5); z-index: 5; }
+.lw-org:hover .lw-org-shape { box-shadow: 0 0 18px 2px #c792ea; transform: scale(1.3); }
+.lw-label {
+  position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11px; padding: 2px 7px; border-radius: 5px;
+  background: #0d1424; border: 1px solid var(--slate); color: #cdd9f5;
+  opacity: 0; pointer-events: none; transition: opacity 0.12s ease;
+}
+.lw-dot:hover .lw-label, .lw-org:hover .lw-label { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lw-dot, .lw-org { animation: none; }
+}

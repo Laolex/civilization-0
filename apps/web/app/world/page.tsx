@@ -115,6 +115,7 @@ export default async function WorldPage() {
       </section>
 
       <div className="build-cta-row" style={{ marginTop: 40 }}>
+        <Link href="/map" className="landing-cta">◉ Living map →</Link>
         <Link href="/orgs" className="landing-cta">Organizations →</Link>
         <Link href="/history" className="landing-cta">History →</Link>
         <Link href="/citizens/new" className="landing-cta">+ New citizen</Link>
