@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { getPool } from "@civ/persistence/src/pool";
 import { readWorldMap, type MapWorld } from "@civ/persistence/src/read";
-import { LivingWorld } from "../../components/LivingWorld";
+import { Constellation } from "../../components/Constellation";
 import { LiveDot } from "../../components/LiveDot";
 
 export const runtime = "nodejs";
@@ -27,14 +27,14 @@ export default async function MapPage() {
         <div className="board-live">
           <LiveDot />
           <span className="board-live-label mono">LIVE on 0G</span>
-          <span className="board-live-cadence">drifting in real time · click any one to open its story</span>
+          <span className="board-live-cadence">hover a citizen to light up their web · click to open a story</span>
         </div>
         <h1 className="board-title">Every world. Every citizen. Alive.</h1>
         <p className="board-sub">
           Each field is a world; each glowing dot a citizen reasoning on{" "}
-          <span className="ink">0G Compute</span>, each violet arc an organization. They drift
-          on their own. Open any one to see the causal chain — reasoned and archived on 0G — that
-          got it here. As population grows the void fills; as people spin up worlds, new fields appear.
+          <span className="ink">0G Compute</span>, and each line a real relationship between them —
+          brighter ties run deeper. Organizations pull their members close. Open any node to see the
+          causal chain — reasoned and archived on 0G — that got it there.
         </p>
         <p className="map-exhibit">
           This is the <span className="ink">provenance layer for autonomous AI</span>, running live.
@@ -78,6 +78,10 @@ export default async function MapPage() {
         <span className="map-legend-item">
           <span className="map-legend-org" aria-hidden /> organization
         </span>
+        <span className="map-legend-sep" aria-hidden />
+        <span className="map-legend-item">
+          <span className="map-legend-edge" aria-hidden /> relationship — brighter = stronger
+        </span>
         <span className="map-legend-item">
           <span className="map-legend-lock" aria-hidden>🔒</span> private world
         </span>
@@ -96,7 +100,7 @@ export default async function MapPage() {
           </p>
         </div>
       ) : (
-        <LivingWorld worlds={worlds} />
+        <Constellation worlds={worlds} />
       )}
 
       <nav className="board-foot" aria-label="Map navigation">

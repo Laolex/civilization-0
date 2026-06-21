@@ -270,20 +270,56 @@ export async function readProofStats(pool: Pool): Promise<ProofStats> {
 
 export interface MapEntity { id: string; name: string; tier: number; }
 export interface MapOrg { id: string; name: string; }
+/** An undirected social tie between two citizens; strength 0–1. */
+export interface MapEdge { a: string; b: string; strength: number; }
 export interface MapWorld {
   id: string; name: string; visibility: string;
   citizens: MapEntity[]; orgs: MapOrg[];
+  edges: MapEdge[];
+  /** citizenId → orgId, so the map can cluster an org's members together. */
+  membership: Record<string, string>;
 }
 
-/** Every world with its inhabitants — drives the living-world map (pg-only, keyless). */
+/** Every world with its inhabitants + social graph — drives the living-world map (pg-only, keyless). */
 export async function readWorldMap(pool: Pool): Promise<MapWorld[]> {
   const w = await pool.query("SELECT id, name, visibility FROM worlds ORDER BY (id = 'genesis') DESC, created_at");
   const c = await pool.query("SELECT id, name, tier, world_id FROM citizens");
   const o = await pool.query(
     "SELECT o.id, o.name, c.world_id FROM organizations o JOIN citizens c ON c.id = o.founder_id");
-  return w.rows.map((world) => ({
-    id: world.id, name: world.name, visibility: world.visibility,
-    citizens: c.rows.filter((x) => x.world_id === world.id).map((x) => ({ id: x.id, name: x.name, tier: x.tier })),
-    orgs: o.rows.filter((x) => x.world_id === world.id).map((x) => ({ id: x.id, name: x.name })),
-  }));
+  const r = await pool.query(
+    `SELECT r.citizen_id, r.other_id, r.trust, r.friendship, c.world_id
+     FROM relationships r JOIN citizens c ON c.id = r.citizen_id`);
+  const m = await pool.query(
+    `SELECT m.citizen_id, m.org_id, c.world_id FROM memberships m JOIN citizens c ON c.id = m.citizen_id`);
+
+  return w.rows.map((world) => {
+    const citizenIds = new Set(c.rows.filter((x) => x.world_id === world.id).map((x) => x.id));
+
+    // Collapse the directional relationship rows into undirected edges, averaging
+    // the (trust+friendship)/200 strength across whichever directions exist.
+    const acc = new Map<string, { sum: number; n: number; a: string; b: string }>();
+    for (const row of r.rows) {
+      if (row.world_id !== world.id) continue;
+      if (!citizenIds.has(row.citizen_id) || !citizenIds.has(row.other_id)) continue;
+      const [a, b] = [row.citizen_id, row.other_id].sort();
+      const key = `${a}|${b}`;
+      const s = Math.min(1, (Number(row.trust) + Number(row.friendship)) / 200);
+      const e = acc.get(key) ?? { sum: 0, n: 0, a, b };
+      e.sum += s; e.n += 1; acc.set(key, e);
+    }
+    const edges: MapEdge[] = [...acc.values()].map((e) => ({ a: e.a, b: e.b, strength: e.sum / e.n }));
+
+    const membership: Record<string, string> = {};
+    for (const row of m.rows) {
+      if (row.world_id === world.id && citizenIds.has(row.citizen_id)) membership[row.citizen_id] = row.org_id;
+    }
+
+    return {
+      id: world.id, name: world.name, visibility: world.visibility,
+      citizens: c.rows.filter((x) => x.world_id === world.id).map((x) => ({ id: x.id, name: x.name, tier: x.tier })),
+      orgs: o.rows.filter((x) => x.world_id === world.id).map((x) => ({ id: x.id, name: x.name })),
+      edges,
+      membership,
+    };
+  });
 }
