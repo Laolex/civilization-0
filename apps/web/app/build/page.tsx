@@ -39,6 +39,13 @@ const STEPS = [
   },
 ];
 
+// One provenance architecture; every agent is just a different instantiation.
+const VERTICALS = [
+  { tag: "Research agents", chain: ["Source", "Memory", "Inference", "Conclusion", "Verifiable trace"] },
+  { tag: "Trading / financial agents", chain: ["Signal", "Belief", "Trade", "Outcome", "Verifiable trace"] },
+  { tag: "Enterprise agents", chain: ["Knowledge", "Decision", "Action", "Audit trail"] },
+];
+
 export default function Build() {
   return (
     <main className="board">
@@ -68,6 +75,53 @@ export default function Build() {
           </li>
         ))}
       </ol>
+
+      <section className="moat-callout" aria-label="Why not just a database">
+        <h2 className="moat-q">“Why can’t I replace this with OpenAI + Postgres?”</h2>
+        <div className="moat-cols">
+          <div className="moat-col moat-col--trust">
+            <span className="moat-col-tag mono">Database</span>
+            <p className="moat-col-body">
+              Stores causality you have to <strong>trust</strong>. The operator can edit the row,
+              drop the trace, or fabricate the reasoning after the fact. Nothing stops them.
+            </p>
+          </div>
+          <div className="moat-col moat-col--verify">
+            <span className="moat-col-tag mono">Civilization-0</span>
+            <p className="moat-col-body">
+              Stores causality you can <strong>verify</strong> — without us. Reasoning is attested by
+              0G Compute (<span className="mono">verified: true</span>, not self-reported); the trace
+              is archived on 0G Storage — keyless, replayable, tamper-evident. Delete our servers and
+              the proof still stands.
+            </p>
+          </div>
+        </div>
+        <p className="moat-kicker">
+          Provenance is only a moat if it survives the operator being adversarial.
+        </p>
+      </section>
+
+      <section className="verticals" aria-label="One architecture, every agent">
+        <h2 className="verticals-h2">One architecture. Every agent.</h2>
+        <p className="verticals-sub">
+          The civilization is the easiest place to <em>see</em> it — but the same
+          Memory → Belief → Decision → Event → verifiable-trace primitive wraps any autonomous agent.
+        </p>
+        <div className="verticals-grid">
+          {VERTICALS.map((v) => (
+            <div key={v.tag} className="vertical-card">
+              <span className="vertical-tag mono">{v.tag}</span>
+              <ol className="vertical-chain">
+                {v.chain.map((step, i) => (
+                  <li key={step} className={i === v.chain.length - 1 ? "vertical-step is-proof" : "vertical-step"}>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="bld-proof">
         <span className="bld-proof-label mono">

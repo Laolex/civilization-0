@@ -36,6 +36,11 @@ export default async function MapPage() {
           on their own. Open any one to see the causal chain — reasoned and archived on 0G — that
           got it here. As population grows the void fills; as people spin up worlds, new fields appear.
         </p>
+        <p className="map-exhibit">
+          This is the <span className="ink">provenance layer for autonomous AI</span>, running live.
+          The civilization is <strong>Exhibit A</strong> — the evidence the layer works, not the product.{" "}
+          <Link href="/build" className="map-exhibit-link">See how it wraps any agent →</Link>
+        </p>
       </header>
 
       {!error && (

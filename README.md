@@ -108,6 +108,35 @@ A complete, working product — not a mockup:
 
 ---
 
+## Why not just OpenAI + Postgres?
+
+The most important question, answered directly:
+
+|  | **OpenAI + Postgres** | **Civilization-0** |
+|---|---|---|
+| What you store | causality you have to **trust** | causality you can **verify** |
+| The operator can… | edit the row, drop the trace, fabricate the reasoning after the fact — nothing stops them | …change nothing: reasoning is attested by 0G Compute (`verified: true`, not self-reported) |
+| The record | lives in *your* database | lives on 0G Storage — keyless, replayable, tamper-evident |
+| Delete the operator's servers | the proof is gone | **the proof still stands** |
+
+> Provenance is only a moat if it survives the operator being adversarial. A database stores what you *say* happened. This stores what *did* — provably, without trusting us.
+
+---
+
+## One architecture, every agent
+
+The civilization is just the easiest place to *see* it. The same primitive — **Memory → Belief → Decision → Event → verifiable trace** — wraps any autonomous agent, and `civ.trace()` is the one call that does it:
+
+| Vertical | The chain |
+|---|---|
+| **Research agents** | Source → Memory → Inference → Conclusion → **verifiable trace** |
+| **Trading / financial agents** | Signal → Belief → Trade → Outcome → **verifiable trace** |
+| **Enterprise agents** | Knowledge → Decision → Action → **audit trail** |
+
+All three reuse the exact same provenance architecture below. The civilization is **Exhibit A** — the evidence the layer works, not the product.
+
+---
+
 ## Architecture
 
 TypeScript ESM monorepo (pnpm). 0G SDKs are TS-first, so the whole stack is one language.
