@@ -1,7 +1,19 @@
 import React from "react";
 import Link from "next/link";
+import { getPool } from "@civ/persistence/src/pool";
+import { readProofStats, type ProofStats } from "@civ/persistence/src/read";
 
-export default function Landing() {
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export default async function Landing() {
+  let stats: ProofStats | null = null;
+  try {
+    stats = await readProofStats(getPool());
+  } catch {
+    stats = null; // DB unavailable — fall back to the static pitch, no strip.
+  }
+
   return (
     <main className="landing-root">
       <p className="landing-eyebrow">Civilization-0 · Verifiable provenance for agentic AI</p>
@@ -14,6 +26,21 @@ export default function Landing() {
         replayable forever. We prove it with a living society whose citizens
         think on 0G Compute and whose history lives on 0G Storage.
       </p>
+
+      {stats && (
+        <div className="proof-strip">
+          <span className="proof-live mono">● LIVE on 0G</span>
+          <span className="proof-stat"><b className="mono">Day {stats.day}</b> · self-running</span>
+          <span className="proof-stat"><b className="mono">{stats.verifiedDecisions}</b> decisions reasoned + verified on 0G Compute</span>
+          <span className="proof-stat"><b className="mono">{stats.archivedTraces}</b> traces archived on 0G Storage</span>
+          {stats.latestRootHash && (
+            <Link href={`/verify/${stats.latestRootHash}`} className="landing-cta-secondary" style={{ padding: "6px 14px" }}>
+              Verify the latest decision yourself →
+            </Link>
+          )}
+        </div>
+      )}
+
       <div className="landing-cta-row">
         <Link href="/world" className="landing-cta">
           Enter the world →
