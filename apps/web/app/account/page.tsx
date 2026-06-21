@@ -19,7 +19,9 @@ export default async function AccountPage() {
   return (
     <main className="world-root">
       <p className="landing-eyebrow">Account · civilization-0</p>
-      <h1 className="world-h1">{user.email}</h1>
+      <h1 className="world-h1" style={user.wallet && !user.email ? { fontSize: 20, wordBreak: "break-all" } : undefined}>
+        {user.email ?? user.wallet ?? "Account"}
+      </h1>
       <div className="world-stat-row">
         <div className="world-stat-card"><span className="label">Plan</span><span className="world-stat-value mono">{user.plan}</span></div>
         <div className="world-stat-card"><span className="label">Worlds</span><span className="world-stat-value mono">{owned.length}</span></div>

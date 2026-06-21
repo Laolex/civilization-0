@@ -1187,3 +1187,32 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .lw-dot, .lw-org { animation: none; }
 }
+
+/* ── Auth: email and wallet, side by side ───────────────────────────── */
+.auth-split {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 22px; align-items: start;
+  margin-top: 22px;
+}
+.auth-panel {
+  border: 1px solid var(--slate); border-radius: 12px; background: var(--panel);
+  padding: 20px;
+}
+.auth-panel-title {
+  font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase;
+  opacity: 0.7; margin: 0 0 14px;
+}
+.auth-or {
+  align-self: stretch; display: flex; align-items: center; justify-content: center;
+  position: relative; color: #6b7aa0; font-size: 12px;
+}
+.auth-or span {
+  background: var(--bg, #070b14); padding: 4px 0; z-index: 1;
+}
+.auth-or::before {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 1px; background: var(--slate);
+}
+@media (max-width: 640px) {
+  .auth-split { grid-template-columns: 1fr; }
+  .auth-or { padding: 6px 0; }
+  .auth-or::before { top: 50%; bottom: auto; left: 0; right: 0; width: auto; height: 1px; }
+}

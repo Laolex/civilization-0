@@ -41,6 +41,9 @@ importers:
       '@civ/zerog':
         specifier: workspace:*
         version: link:../../packages/zerog
+      ethers:
+        specifier: ^6
+        version: 6.17.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       next:
         specifier: 14.2.5
         version: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

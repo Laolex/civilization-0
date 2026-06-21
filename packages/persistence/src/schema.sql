@@ -109,3 +109,12 @@ INSERT INTO worlds (id,name,owner_id,visibility,population_cap)
   VALUES ('genesis','Genesis',NULL,'public',1000) ON CONFLICT (id) DO NOTHING;
 ALTER TABLE citizens ADD COLUMN IF NOT EXISTS world_id TEXT NOT NULL DEFAULT 'genesis';
 CREATE INDEX IF NOT EXISTS citizens_world_idx ON citizens (world_id);
+
+-- Wallet auth: a user may sign in by email OR by wallet, so email/password are optional.
+ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_address TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS users_wallet_idx ON users (wallet_address) WHERE wallet_address IS NOT NULL;
+CREATE TABLE IF NOT EXISTS wallet_nonces (
+  address TEXT PRIMARY KEY, nonce TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL
+);
