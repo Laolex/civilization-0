@@ -17,8 +17,12 @@ export async function readWorldView(pool: Pool, limit: number): Promise<WorldVie
     "SELECT id, name, tier, reputation, wealth, occupation FROM citizens ORDER BY reputation DESC",
   );
   const es = await pool.query(
+    // Prefer the trace root: it's the keyless-verifiable civ.provenance/v0
+    // record. The event root archives a raw WorldEvent (no schema) for major
+    // actions — it would fail verifyRecord — so fall back to it only if there's
+    // no trace.
     `SELECT e.id, e.day, e.type, e.actor_id, e.target_id,
-       COALESCE(e.zg_root_hash, t.zg_root_hash) AS root_hash
+       COALESCE(t.zg_root_hash, e.zg_root_hash) AS root_hash
      FROM events e LEFT JOIN traces t ON t.decision_id = e.decision_id
      ORDER BY e.day DESC, e.id DESC LIMIT $1`,
     [limit],
@@ -109,7 +113,9 @@ export async function searchEvents(pool: Pool, filters: SearchFilters): Promise<
   return r.rows.map((x) => ({
     id: x.id, day: x.day, type: x.type, actorId: x.actor_id, targetId: x.target_id ?? null,
     reasoning: (x.payload?.reasoning as string) ?? (x.trace?.reasoning as string) ?? null,
-    rootHash: x.event_root ?? x.trace_root ?? null,
+    // Trace root first — it's the verifiable civ.provenance/v0 record; the raw
+    // event archive (event_root) is only a fallback and won't verify.
+    rootHash: x.trace_root ?? x.event_root ?? null,
   }));
 }
 
