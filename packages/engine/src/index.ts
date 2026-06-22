@@ -85,6 +85,10 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   const usedBeliefs = beliefs.filter((b) => b.id in result.beliefWeights);
   const trace = await explain.buildAndArchive({
     id: idgen(), decision, goal, memories, beliefs: usedBeliefs, event,
+    drivers: {
+      memories: dm.map((d) => ({ id: d.memoryId, weight: d.weight })),
+      beliefs: db.map((d) => ({ id: d.beliefId, weight: d.weight })),
+    },
   });
   store.addTrace(trace);
 

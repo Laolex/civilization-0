@@ -159,7 +159,7 @@ apps/
   web             Next.js 14 — the dashboard, profiles, history, verifier, auth, tiers, Research API
 ```
 
-**Design rule held across the whole build:** the engine (`packages/engine`) and world store (`packages/store`) are **byte-for-byte unchanged** by every feature — orgs, history, user citizens, monetization, economics all sit *around* the core, never inside it. The web read path is **keyless** (no private key ever touches the browser-facing server) and **pg-light** (never bundles the heavy engine graph).
+**Design rule held across the whole build:** the world store (`packages/store`) is **byte-for-byte unchanged** by every feature, and the engine (`packages/engine`) stays a thin tick loop — orgs, history, user citizens, monetization, economics all sit *around* the core, never inside it. (The engine's one provenance touch-up: it now threads the decision's real salience weights into the `civ.provenance/v0` record it archives, so every trace verifies keyless from its root hash.) The web read path is **keyless** (no private key ever touches the browser-facing server) and **pg-light** (never bundles the heavy engine graph).
 
 How an **organization reasons as an agent** without touching the engine — it's projected into a citizen persona and run through the exact same 0G brain:
 
