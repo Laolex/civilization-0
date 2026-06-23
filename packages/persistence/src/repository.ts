@@ -17,6 +17,10 @@ export class WorldRepository {
     await this.pool.query("UPDATE world_state SET day = $1 WHERE id = 1", [day]);
   }
 
+  async setWorldHeadline(worldId: string, headline: string): Promise<void> {
+    await this.pool.query("UPDATE worlds SET headline = $2 WHERE id = $1", [worldId, headline]);
+  }
+
   async adjustWealth(citizenId: string, delta: number): Promise<void> {
     if (!delta) return;
     await this.pool.query("UPDATE citizens SET wealth = GREATEST(0, wealth + $2) WHERE id = $1", [citizenId, delta]);
@@ -111,6 +115,14 @@ export class WorldRepository {
       store.upsertCitizen({ id: r.id, name: r.name, occupation: r.occupation, age: r.age,
         traits: r.traits, wealth: Number(r.wealth), reputation: Number(r.reputation),
         tier: r.tier, createdDay: r.created_day });
+    }
+    const worldId = c.rows[0]?.world_id;
+    if (worldId) {
+      const wr = await this.pool.query("SELECT headline FROM worlds WHERE id = $1", [worldId]);
+      const wh = wr.rows[0]?.headline;
+      if (typeof wh === "string" && wh.length > 0) {
+        store.setWorldState({ ...store.getWorldState(), headline: wh });
+      }
     }
     const goals = await this.pool.query("SELECT * FROM goals WHERE citizen_id = $1", [citizenId]);
     for (const g of goals.rows) store.upsertGoal({ id: g.id, citizenId: g.citizen_id, kind: g.kind,
