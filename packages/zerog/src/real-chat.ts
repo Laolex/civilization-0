@@ -4,7 +4,8 @@ import { ZeroGComputeBrain, type Chat, type ChatMessage, type ChatResult } from 
 import type { BrainProvider } from "@civ/brain";
 import type { ZeroGConfig } from "./config";
 import { ZeroGBrainError } from "./errors";
-import { instrumentBrain, instrumentChat } from "./opik-tracing";
+import { instrumentBrain, instrumentChat, getOpikClient } from "./opik-tracing";
+import { ZeroGJudge } from "./judge";
 
 type Broker = Awaited<ReturnType<typeof createZGComputeNetworkBroker>>;
 
@@ -104,7 +105,10 @@ export async function ensureFunded(broker: Broker, config: ZeroGConfig): Promise
 
 export async function createZeroGComputeBrain(config: ZeroGConfig): Promise<BrainProvider> {
   const chat = await RealChat.create(config);
-  // instrument* are no-op pass-throughs unless OPIK_API_KEY is set.
+  // instrument* are no-op pass-throughs unless OPIK_API_KEY is set. When it is,
+  // each decision is also graded by a ZeroGJudge reusing the same 0G chat (its
+  // call surfaces only as the "judge" span, so it is not double-traced).
+  const judge = new ZeroGJudge(chat);
   const brain = new ZeroGComputeBrain(instrumentChat(chat), chat.modelName);
-  return instrumentBrain(brain);
+  return instrumentBrain(brain, getOpikClient(), judge);
 }
