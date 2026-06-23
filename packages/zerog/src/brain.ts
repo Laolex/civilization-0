@@ -6,6 +6,7 @@ export interface ChatMessage { role: "system" | "user" | "assistant"; content: s
 export interface ChatResult {
   content: string; provider: string; model: string;
   requestId?: string; verified?: boolean; verification?: unknown;
+  usage?: Record<string, number>;
 }
 export interface Chat { complete(messages: ChatMessage[]): Promise<ChatResult>; }
 
