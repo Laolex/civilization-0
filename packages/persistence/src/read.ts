@@ -138,6 +138,7 @@ export async function readNarrative(pool: Pool, subjectId: string, kind: string)
 export interface CitizenProfileView {
   id: string; name: string; occupation: string; age: number;
   traits: Record<string, number>; wealth: number; reputation: number; tier: number; createdDay: number;
+  worldId: string | null;
 }
 export interface RelationshipView { otherId: string; trust: number; friendship: number; influence: number; }
 export interface GoalView { id: string; kind: string; description: string; progress: number; active: boolean; }
@@ -148,7 +149,8 @@ export async function readCitizen(pool: Pool, id: string): Promise<CitizenProfil
   if (!x) return null;
   return { id: x.id, name: x.name, occupation: x.occupation, age: x.age,
     traits: (x.traits ?? {}) as Record<string, number>,
-    wealth: Number(x.wealth), reputation: Number(x.reputation), tier: x.tier, createdDay: x.created_day };
+    wealth: Number(x.wealth), reputation: Number(x.reputation), tier: x.tier, createdDay: x.created_day,
+    worldId: x.world_id ?? null };
 }
 
 export async function readRelationships(pool: Pool, id: string): Promise<RelationshipView[]> {
