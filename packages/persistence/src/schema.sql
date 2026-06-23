@@ -118,3 +118,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_wallet_idx ON users (wallet_address) WHE
 CREATE TABLE IF NOT EXISTS wallet_nonces (
   address TEXT PRIMARY KEY, nonce TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL
 );
+
+-- Row-Level Security: the app connects directly via DATABASE_URL as the table
+-- owner, which bypasses non-forced RLS. Enabling RLS with no policies is deny-all
+-- for Supabase's PostgREST anon/authenticated API (the only external surface),
+-- closing the rls_disabled_in_public / sensitive_columns_exposed exposure with
+-- zero impact on the app. All DB access is via the direct connection.
+ALTER TABLE world_state        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE citizens           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goals              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE relationships      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memories           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beliefs            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE decisions          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE decision_memories  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE decision_beliefs   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE traces             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organizations      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memberships        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE narratives         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE worlds             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_nonces      ENABLE ROW LEVEL SECURITY;
