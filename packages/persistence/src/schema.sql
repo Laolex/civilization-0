@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS worlds (
 );
 INSERT INTO worlds (id,name,owner_id,visibility,population_cap)
   VALUES ('genesis','Genesis',NULL,'public',1000) ON CONFLICT (id) DO NOTHING;
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS headline TEXT NOT NULL DEFAULT '';
 ALTER TABLE citizens ADD COLUMN IF NOT EXISTS world_id TEXT NOT NULL DEFAULT 'genesis';
 CREATE INDEX IF NOT EXISTS citizens_world_idx ON citizens (world_id);
 
