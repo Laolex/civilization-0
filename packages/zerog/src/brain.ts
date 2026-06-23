@@ -76,12 +76,19 @@ export function tryParseDecision(content: string, ctx: DecisionContext): Decisio
   };
 }
 
+/** Builds the chat messages for a decision. Swappable to A/B prompt variants. */
+export type PromptBuilder = (ctx: DecisionContext) => ChatMessage[];
+
 export class ZeroGComputeBrain implements BrainProvider {
   readonly name = "0g-compute";
-  constructor(private readonly chat: Chat, readonly model: string) {}
+  constructor(
+    private readonly chat: Chat,
+    readonly model: string,
+    private readonly promptBuilder: PromptBuilder = buildMessages,
+  ) {}
 
   async decide(ctx: DecisionContext): Promise<DecisionResult> {
-    const messages = buildMessages(ctx);
+    const messages = this.promptBuilder(ctx);
     let result = await this.chat.complete(messages);
     let decision = tryParseDecision(result.content, ctx);
     if (!decision) {

@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Offline experiment harness** (`@civ/zerog/eval`). Run a curated set of
+  decision scenarios through a brain variant, grade each with the 0G judge, and
+  log an Opik **experiment** with aggregated `in_character`/`goal_alignment`
+  scores — so two runs render as a side-by-side comparison. `ZeroGComputeBrain`
+  now accepts an injectable `PromptBuilder`, enabling in-run prompt A/B
+  (`promptV1` vs `promptV2`). `InCharacterMetric` wraps the judge as an Opik
+  scoring metric (two dimensions per item; ungradeable items omitted, not zeroed).
+  `runDecisionExperiment` has injectable `evaluate`/client seams for tests.
+  Eval modules are intentionally not re-exported from the package index, keeping
+  the SDK out of the core lazy-Opik path. Scripts: `run-experiment.ts` (real 0G
+  A/B) and `smoke-experiment.ts` (verifies the harness with zero 0G spend).
 - **Opik LLM tracing** (`@civ/zerog`). Every `BrainProvider.decide()` becomes one
   Opik trace; every underlying `Chat.complete()` (including the JSON-repair retry)
   becomes a nested `llm` span carrying messages, output, model, token usage, and

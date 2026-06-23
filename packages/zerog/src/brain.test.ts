@@ -100,3 +100,31 @@ describe("buildMessages", () => {
     expect(msgs[1].content).toContain("[b1]");
   });
 });
+
+describe("ZeroGComputeBrain prompt builder injection", () => {
+  it("uses an injected prompt builder instead of the default", async () => {
+    let seen: ChatMessage[] = [];
+    const chat: Chat = {
+      complete: async (messages) => {
+        seen = messages;
+        return { content: '{"action":"work"}', provider: "0xprov", model: "llama-x", verified: true };
+      },
+    };
+    const customBuilder = () => [{ role: "system" as const, content: "CUSTOM VARIANT PROMPT" },
+      { role: "user" as const, content: "decide" }];
+    await new ZeroGComputeBrain(chat, "llama-x", customBuilder).decide(ctxOf());
+    expect(seen[0].content).toBe("CUSTOM VARIANT PROMPT");
+  });
+
+  it("defaults to buildMessages when no builder is given", async () => {
+    let seen: ChatMessage[] = [];
+    const chat: Chat = {
+      complete: async (messages) => {
+        seen = messages;
+        return { content: '{"action":"work"}', provider: "0xprov", model: "llama-x", verified: true };
+      },
+    };
+    await new ZeroGComputeBrain(chat, "llama-x").decide(ctxOf());
+    expect(seen[0].content).toContain("start_company"); // signature of the default builder
+  });
+});
