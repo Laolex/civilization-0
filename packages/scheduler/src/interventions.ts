@@ -15,11 +15,21 @@ export async function drainInterventions(deps: DrainDeps, day: number): Promise<
     if (iv.type !== "whisper") continue; // other types handled by later sub-projects
     try {
       await deps.applyWhisper(iv, day);
-      await deps.markApplied(iv.id, day);
-      applied++;
+      try {
+        await deps.markApplied(iv.id, day);
+        applied++;
+      } catch (err) {
+        console.warn(`Failed to mark intervention ${iv.id} as applied:`, err);
+        applied++;
+      }
     } catch {
-      await deps.markFailed(iv.id);
-      failed++;
+      try {
+        await deps.markFailed(iv.id);
+        failed++;
+      } catch (err) {
+        console.warn(`Failed to mark intervention ${iv.id} as failed:`, err);
+        failed++;
+      }
     }
   }
   return { applied, failed };

@@ -44,4 +44,29 @@ describe("drainInterventions", () => {
     const out = await drainInterventions(deps, 5);
     expect(out).toEqual({ applied: 0, failed: 0 });
   });
+
+  it("resilient to markFailed rejection: continues processing remaining interventions", async () => {
+    const applied: string[] = [];
+    const failed: string[] = [];
+    const deps: DrainDeps = {
+      pending: async () => [
+        ivOf({ id: "iv1" }),
+        ivOf({ id: "iv2" }),
+      ],
+      applyWhisper: async (iv) => {
+        if (iv.id === "iv1") throw new Error("first fails");
+      },
+      markApplied: async (id) => { applied.push(id); },
+      markFailed: async (id) => {
+        failed.push(id);
+        if (id === "iv1") throw new Error("markFailed transient error");
+      },
+    };
+    const out = await drainInterventions(deps, 5);
+    // Despite markFailed rejecting for iv1, drainInterventions should not throw
+    // and should still process iv2 (apply it successfully)
+    expect(out).toEqual({ applied: 1, failed: 1 });
+    expect(applied).toEqual(["iv2"]);
+    expect(failed).toEqual(["iv1"]);
+  });
 });
