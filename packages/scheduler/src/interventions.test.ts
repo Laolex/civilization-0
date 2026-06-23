@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Memory } from "@civ/shared";
 import type { Intervention } from "@civ/persistence/src/intervention-write";
-import { drainInterventions, makeWhisperApplier, type DrainDeps } from "./interventions";
+import { drainInterventions, makeWhisperApplier, makeWorldEventApplier, type DrainDeps } from "./interventions";
 
 function ivOf(over: Partial<Intervention> = {}): Intervention {
   return { id: "iv1", worldId: "w1", userId: "u1", type: "whisper",
@@ -84,5 +84,40 @@ describe("drainInterventions", () => {
     expect(out).toEqual({ applied: 1, failed: 1 });
     expect(applied).toEqual(["iv2"]);
     expect(failed).toEqual(["iv1"]);
+  });
+
+  it("dispatches a world_event to applyWorldEvent and a whisper to applyWhisper", async () => {
+    const calls: string[] = [];
+    const deps: DrainDeps = {
+      pending: async () => [ivOf({ id: "w1", type: "whisper" }), ivOf({ id: "e1", type: "world_event" })],
+      applyWhisper: async (iv) => { calls.push(`whisper:${iv.id}`); },
+      applyWorldEvent: async (iv) => { calls.push(`event:${iv.id}`); },
+      markApplied: async () => {}, markFailed: async () => {},
+    };
+    const out = await drainInterventions(deps, 5);
+    expect(out).toEqual({ applied: 2, failed: 0 });
+    expect(calls).toEqual(["whisper:w1", "event:e1"]);
+  });
+
+  it("leaves a truly unknown type pending (not applied/failed)", async () => {
+    const marked: string[] = [];
+    const deps: DrainDeps = {
+      pending: async () => [ivOf({ id: "x1", type: "dilemma" })],
+      applyWhisper: async () => { throw new Error("nope"); },
+      markApplied: async (id) => { marked.push(`a:${id}`); },
+      markFailed: async (id) => { marked.push(`f:${id}`); },
+    };
+    const out = await drainInterventions(deps, 5);
+    expect(out).toEqual({ applied: 0, failed: 0 });
+    expect(marked).toEqual([]);
+  });
+
+  it("makeWorldEventApplier sets the world's headline; throws on missing headline", async () => {
+    const set: Array<[string, string]> = [];
+    const repo = { setWorldHeadline: async (w: string, h: string) => { set.push([w, h]); } };
+    const apply = makeWorldEventApplier(repo);
+    await apply(ivOf({ id: "e1", type: "world_event", worldId: "w9", payload: { headline: "War breaks out" } }), 2);
+    expect(set).toEqual([["w9", "War breaks out"]]);
+    await expect(apply(ivOf({ id: "e2", type: "world_event", payload: {} }), 2)).rejects.toThrow();
   });
 });

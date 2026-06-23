@@ -10,7 +10,7 @@ import type { TickDeps } from "@civ/engine";
 import type { InMemoryWorldStore } from "@civ/store";
 import { runDay } from "../src/loop";
 import type { Ticker } from "../src/select";
-import { drainInterventions, makeWhisperApplier } from "../src/interventions";
+import { drainInterventions, makeWhisperApplier, makeWorldEventApplier } from "../src/interventions";
 import { pendingInterventions, markInterventionApplied, markInterventionFailed } from "@civ/persistence/src/intervention-write";
 
 async function main() {
@@ -51,8 +51,9 @@ async function main() {
   const repo = new WorldRepository();
 
   const applyWhisper = makeWhisperApplier(repo, embedder);
+  const applyWorldEvent = makeWorldEventApplier(repo);
   const drain = (day: number) => drainInterventions(
-    { pending: pendingInterventions, applyWhisper, markApplied: markInterventionApplied, markFailed: markInterventionFailed },
+    { pending: pendingInterventions, applyWhisper, applyWorldEvent, markApplied: markInterventionApplied, markFailed: markInterventionFailed },
     day);
 
   // Load the population for tier selection from DB
