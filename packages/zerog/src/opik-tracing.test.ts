@@ -3,6 +3,7 @@ import type { DecisionContext, BrainProvider } from "@civ/brain";
 import { FakeBrain } from "@civ/brain";
 import { ZeroGComputeBrain, type Chat, type ChatMessage, type ChatResult } from "./brain";
 import { instrumentBrain, instrumentChat, getOpikClient, __resetOpikClient, type OpikClientLike } from "./opik-tracing";
+import type { DecisionJudge, JudgeResult } from "./judge";
 
 function ctxOf(): DecisionContext {
   return {
@@ -29,9 +30,11 @@ class FakeTrace {
   ended = false;
   updates: Record<string, unknown>[] = [];
   spans: FakeSpan[] = [];
+  scores: { name: string; value: number; reason?: string }[] = [];
   constructor(public data: Record<string, unknown>) {}
   span(d: Record<string, unknown>) { const s = new FakeSpan(d); this.spans.push(s); return s; }
   update(u: Record<string, unknown>) { this.updates.push(u); return this; }
+  score(s: { name: string; value: number; reason?: string }) { this.scores.push(s); return this; }
   end() { this.ended = true; return this; }
 }
 class FakeOpik implements OpikClientLike {
@@ -152,6 +155,61 @@ describe("instrumentChat under an active brain trace — nesting via AsyncLocalS
 
     expect(client.traces).toHaveLength(1);
     expect(client.traces[0].spans).toHaveLength(1);
+  });
+});
+
+describe("instrumentBrain — with an LLM judge (online scoring)", () => {
+  const judgeResult: JudgeResult = {
+    scores: { inCharacter: 0.9, goalAlignment: 0.7 },
+    reasoning: "fits an ambitious engineer",
+    raw: { content: "{...}", provider: "0xprov", model: "llama-x", verified: true, usage: { total_tokens: 42 } },
+    prompt: [{ role: "system", content: "grade this" }, { role: "user", content: "decision" }],
+  };
+  const okJudge: DecisionJudge = { async grade() { return judgeResult; } };
+
+  it("attaches in_character + goal_alignment feedback scores and a judge span, leaving the decision unchanged", async () => {
+    const client = new FakeOpik();
+    const brain = instrumentBrain(new ZeroGComputeBrain(new FakeChat([VALID]), "llama-x"), client, okJudge);
+
+    const result = await brain.decide(ctxOf());
+
+    expect(result.action).toBe("start_company");
+    const trace = client.traces[0];
+    expect(trace.scores.map((s) => s.name).sort()).toEqual(["goal_alignment", "in_character"]);
+    const inChar = trace.scores.find((s) => s.name === "in_character")!;
+    expect(inChar.value).toBe(0.9);
+    expect(inChar.reason).toContain("ambitious");
+    // judge LLM call is recorded as its own span
+    expect(trace.spans.some((s) => s.data.name === "judge")).toBe(true);
+  });
+
+  it("does not score and still returns the decision when the judge returns null", async () => {
+    const client = new FakeOpik();
+    const nullJudge: DecisionJudge = { async grade() { return null; } };
+    const brain = instrumentBrain(new ZeroGComputeBrain(new FakeChat([VALID]), "llama-x"), client, nullJudge);
+
+    const result = await brain.decide(ctxOf());
+
+    expect(result.action).toBe("start_company");
+    expect(client.traces[0].scores).toHaveLength(0);
+  });
+
+  it("still returns the decision when the judge throws (best-effort)", async () => {
+    const client = new FakeOpik();
+    const throwingJudge: DecisionJudge = { async grade() { throw new Error("judge down"); } };
+    const brain = instrumentBrain(new ZeroGComputeBrain(new FakeChat([VALID]), "llama-x"), client, throwingJudge);
+
+    const result = await brain.decide(ctxOf());
+    expect(result.action).toBe("start_company");
+  });
+
+  it("does not call the judge when Opik is disabled (null client)", async () => {
+    let called = false;
+    const judge: DecisionJudge = { async grade() { called = true; return judgeResult; } };
+    const brain = instrumentBrain(new ZeroGComputeBrain(new FakeChat([VALID]), "llama-x"), null, judge);
+
+    await brain.decide(ctxOf());
+    expect(called).toBe(false);
   });
 });
 

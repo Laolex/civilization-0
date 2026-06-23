@@ -7,4 +7,6 @@ export { RealUploader, createZeroGStorage } from "./real-uploader";
 export { RealChat, createZeroGComputeBrain } from "./real-chat";
 export { instrumentBrain, instrumentChat, getOpikClient, flushOpik } from "./opik-tracing";
 export type { OpikClientLike, OpikTraceLike, OpikSpanLike } from "./opik-tracing";
+export { ZeroGJudge, buildJudgePrompt, parseJudgeResult } from "./judge";
+export type { DecisionJudge, JudgeResult, JudgeScores } from "./judge";
 export { RealDownloader, createZeroGDownloader } from "./real-downloader";

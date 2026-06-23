@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createRequire } from "node:module";
 import type { BrainProvider, DecisionContext, DecisionResult } from "@civ/brain";
 import type { Chat, ChatMessage, ChatResult } from "./brain";
+import type { DecisionJudge } from "./judge";
 
 // The package is ESM ("type": "module"), so bare `require` is undefined at
 // runtime. Build one from this module's URL to load the Opik SDK lazily without
@@ -21,6 +22,7 @@ export interface OpikSpanLike {
 export interface OpikTraceLike {
   span(data: Record<string, unknown>): OpikSpanLike;
   update(updates: Record<string, unknown>): unknown;
+  score(score: { name: string; value: number; reason?: string }): unknown;
   end(): unknown;
 }
 export interface OpikClientLike {
@@ -104,13 +106,42 @@ function traceInput(ctx: DecisionContext): Record<string, unknown> {
   };
 }
 
+/** Grade `result` and attach the scores + a `judge` span to the active trace. Best-effort. */
+async function gradeOntoTrace(
+  judge: DecisionJudge, trace: OpikTraceLike, ctx: DecisionContext, result: DecisionResult,
+): Promise<void> {
+  let graded;
+  try {
+    graded = await judge.grade(ctx, result);
+  } catch (err) {
+    console.warn("[opik] judge error (ignored):", String(err));
+    return;
+  }
+  if (!graded) return;
+  safe(() => {
+    const span = trace.span({ name: "judge", type: "llm", input: { messages: graded.prompt },
+      metadata: { role: "judge" } });
+    span.update({
+      output: { scores: graded.scores, reasoning: graded.reasoning },
+      model: graded.raw.model, usage: graded.raw.usage,
+      metadata: { provider: graded.raw.provider, requestId: graded.raw.requestId, verified: graded.raw.verified },
+    });
+    span.end();
+  });
+  safe(() => trace.score({ name: "in_character", value: graded.scores.inCharacter, reason: graded.reasoning }));
+  safe(() => trace.score({ name: "goal_alignment", value: graded.scores.goalAlignment, reason: graded.reasoning }));
+}
+
 /**
- * Wrap a BrainProvider so each `decide()` becomes one Opik trace. Returns the
- * brain unchanged when `client` resolves to null (no Opik configured).
+ * Wrap a BrainProvider so each `decide()` becomes one Opik trace. When a
+ * `judge` is supplied, each decision is also graded (in-character +
+ * goal-alignment) and the scores are attached to the trace. Returns the brain
+ * unchanged when `client` resolves to null (no Opik configured).
  */
 export function instrumentBrain(
   brain: BrainProvider,
   client: OpikClientLike | null = getOpikClient(),
+  judge: DecisionJudge | null = null,
 ): BrainProvider {
   if (!client) return brain;
   return {
@@ -121,7 +152,12 @@ export function instrumentBrain(
         client.trace({ name: `decide: ${ctx.citizen.name}`, input: traceInput(ctx),
           metadata: { provider: brain.name, model: brain.model } }),
       );
-      const run = () => brain.decide(ctx);
+      const run = async () => {
+        const r = await brain.decide(ctx);
+        // Grade inside the trace scope so the judge's own LLM span nests correctly.
+        if (trace && judge) await gradeOntoTrace(judge, trace, ctx, r);
+        return r;
+      };
       try {
         const result = trace ? await activeTrace.run(trace, run) : await run();
         if (trace) {

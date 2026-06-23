@@ -15,6 +15,7 @@ loadDotenv({ path: resolve(import.meta.dirname, "../../../.env") });
 import type { DecisionContext } from "@civ/brain";
 import { ZeroGComputeBrain, type Chat, type ChatMessage, type ChatResult } from "../src/brain";
 import { instrumentBrain, instrumentChat, getOpikClient, flushOpik } from "../src/opik-tracing";
+import { ZeroGJudge } from "../src/judge";
 
 class FakeChat implements Chat {
   calls = 0;
@@ -45,15 +46,18 @@ async function main() {
     : "OPIK_API_KEY not set — tracing is a no-op. Set it in .env to send traces.\n");
 
   // First reply is garbage to exercise the JSON-repair retry (two llm spans).
-  const chat = instrumentChat(new FakeChat(["not json", '{"action":"start_company","targetId":"marcus","reasoning":"take the funding and build","memoryWeights":{"m1":0.9},"beliefWeights":{"b1":0.8}}']));
-  const brain = instrumentBrain(new ZeroGComputeBrain(chat, "fake-llm-v0"));
+  const rawChat = new FakeChat(["not json", '{"action":"start_company","targetId":"marcus","reasoning":"take the funding and build","memoryWeights":{"m1":0.9},"beliefWeights":{"b1":0.8}}']);
+  const chat = instrumentChat(rawChat);
+  // Judge reuses a fake chat that returns scores, mirroring the 0G judge in prod.
+  const judge = new ZeroGJudge(new FakeChat(['{"inCharacter":0.92,"goalAlignment":0.71,"reasoning":"taking funding to build a company fits a high-ambition, high-risk engineer chasing financial independence"}']));
+  const brain = instrumentBrain(new ZeroGComputeBrain(chat, "fake-llm-v0"), getOpikClient(), judge);
 
   const decision = await brain.decide(ctx);
   console.log("Decision:", JSON.stringify(decision, null, 2));
 
   await flushOpik();
   console.log(enabled
-    ? "\nFlushed. Open your Opik project — look for trace 'decide: Ada' with 2 llm spans (one is the repair)."
+    ? "\nFlushed. Open your Opik project — look for trace 'decide: Ada' with 2 llm spans + a 'judge' span,\nand feedback scores in_character≈0.92 and goal_alignment≈0.71 on the trace."
     : "\nDone (no traces sent).");
 }
 
