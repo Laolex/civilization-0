@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Player interventions — Whisper (v2)** — first step of turning the sim from a
+  read-only observation surface into a game. A signed-in player can "whisper" a
+  short suggestion to a citizen; it is enqueued in a new `interventions` queue,
+  drained at the start of the next scheduler day into a *pinned* importance-10
+  memory, and force-included in that citizen's next 0G decision regardless of
+  similarity retrieval (then cleared after one tick). Authorization via
+  `canIntervene`: a world owner may always intervene in their own world; the
+  shared `genesis` world is gated to premium plans (`pro`/`research`).
+  `POST/GET /api/interventions` enforces auth + authz + a 280-char cap, with a
+  defense-in-depth citizen-in-world check at both enqueue and apply time; a
+  server-gated `WhisperBox` appears on the citizen page only for viewers who may
+  intervene. Substrate for the deferred world-event and dilemma mechanics.
 - **Offline experiment harness** (`@civ/zerog/eval`). Run a curated set of
   decision scenarios through a brain variant, grade each with the 0G judge, and
   log an Opik **experiment** with aggregated `in_character`/`goal_alignment`
