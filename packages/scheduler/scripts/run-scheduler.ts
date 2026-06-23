@@ -50,7 +50,7 @@ async function main() {
 
   const repo = new WorldRepository();
 
-  const applyWhisper = makeWhisperApplier(repo, embedder, idgen);
+  const applyWhisper = makeWhisperApplier(repo, embedder);
   const drain = (day: number) => drainInterventions(
     { pending: pendingInterventions, applyWhisper, markApplied: markInterventionApplied, markFailed: markInterventionFailed },
     day);

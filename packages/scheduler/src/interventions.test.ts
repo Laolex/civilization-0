@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
+import type { Memory } from "@civ/shared";
 import type { Intervention } from "@civ/persistence/src/intervention-write";
-import { drainInterventions, type DrainDeps } from "./interventions";
+import { drainInterventions, makeWhisperApplier, type DrainDeps } from "./interventions";
 
 function ivOf(over: Partial<Intervention> = {}): Intervention {
   return { id: "iv1", worldId: "w1", userId: "u1", type: "whisper",
@@ -43,6 +44,21 @@ describe("drainInterventions", () => {
     };
     const out = await drainInterventions(deps, 5);
     expect(out).toEqual({ applied: 0, failed: 0 });
+  });
+
+  it("derives the pinned-memory id deterministically from the intervention id (idempotent re-apply)", async () => {
+    const ids: string[] = [];
+    const repo = {
+      getCitizenWorldId: async () => "w1",
+      addPinnedMemory: async (m: Memory) => { ids.push(m.id); },
+    };
+    const embedder = { embed: () => [1] };
+    const apply = makeWhisperApplier(repo, embedder);
+    await apply(ivOf({ id: "iv9" }), 3);
+    await apply(ivOf({ id: "iv9" }), 4); // a re-apply of the same intervention
+    // Same memory id both times — so the repo's ON CONFLICT (id) DO NOTHING
+    // makes the second insert a no-op rather than a duplicate whisper.
+    expect(ids).toEqual(["wh-iv9", "wh-iv9"]);
   });
 
   it("resilient to markFailed rejection: continues processing remaining interventions", async () => {

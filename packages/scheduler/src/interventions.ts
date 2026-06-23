@@ -38,7 +38,6 @@ export async function drainInterventions(deps: DrainDeps, day: number): Promise<
 export function makeWhisperApplier(
   repo: { getCitizenWorldId(id: string): Promise<string | null>; addPinnedMemory(m: Memory): Promise<void> },
   embedder: Embedder,
-  idgen: () => string,
 ) {
   return async (iv: Intervention, day: number): Promise<void> => {
     const citizenId = iv.targetCitizenId;
@@ -47,7 +46,11 @@ export function makeWhisperApplier(
     const world = await repo.getCitizenWorldId(citizenId);
     if (world !== iv.worldId) throw new Error("target citizen not in intervention world");
     await repo.addPinnedMemory({
-      id: idgen(), citizenId, day, type: "relationship", importance: 10,
+      // Deterministic id keyed off the intervention so a re-apply (e.g. if
+      // markApplied failed and the row stayed pending) collides on the PK and
+      // is dropped by addPinnedMemory's ON CONFLICT (id) DO NOTHING — a whisper
+      // is force-included into exactly one decision.
+      id: `wh-${iv.id}`, citizenId, day, type: "relationship", importance: 10,
       summary: text, embedding: embedder.embed(text), pinned: true,
     });
   };
