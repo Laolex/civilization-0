@@ -119,7 +119,7 @@ export class WorldRepository {
     const mems = await this.pool.query("SELECT * FROM memories WHERE citizen_id = $1", [citizenId]);
     for (const m of mems.rows) store.addMemory({ id: m.id, citizenId: m.citizen_id, day: m.day,
       type: m.type, importance: m.importance, summary: m.summary, embedding: fromVector(m.embedding),
-      zgRootHash: m.zg_root_hash ?? undefined, zgTxHash: m.zg_tx_hash ?? undefined });
+      zgRootHash: m.zg_root_hash ?? undefined, zgTxHash: m.zg_tx_hash ?? undefined, pinned: m.pinned ?? false });
 
     const beliefs = await this.pool.query("SELECT * FROM beliefs WHERE citizen_id = $1", [citizenId]);
     for (const b of beliefs.rows) store.upsertBelief({ id: b.id, citizenId: b.citizen_id,

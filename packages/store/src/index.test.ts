@@ -64,4 +64,13 @@ describe("InMemoryWorldStore", () => {
     s.setWorldState({ day: 5, economy: { gdp: 100 }, headline: "Boom" });
     expect(s.getWorldState()).toEqual({ day: 5, economy: { gdp: 100 }, headline: "Boom" });
   });
+
+  it("exposes and clears pinned memories", () => {
+    const s = new InMemoryWorldStore();
+    s.addMemory({ id: "p1", citizenId: "ada", day: 1, type: "relationship", importance: 10, summary: "whisper", embedding: [1], pinned: true });
+    s.addMemory({ id: "m2", citizenId: "ada", day: 1, type: "event", importance: 5, summary: "normal", embedding: [1] });
+    expect(s.getPinnedMemories("ada").map((m) => m.id)).toEqual(["p1"]);
+    s.clearPin("p1");
+    expect(s.getPinnedMemories("ada")).toHaveLength(0);
+  });
 });

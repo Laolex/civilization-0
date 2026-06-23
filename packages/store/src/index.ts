@@ -12,6 +12,8 @@ export interface WorldStore {
   upsertRelationship(r: Relationship): void;
   getMemories(citizenId: string): Memory[];
   addMemory(m: Memory): void;
+  getPinnedMemories(citizenId: string): Memory[];
+  clearPin(memoryId: string): void;
   updateMemoryArchive(id: string, rootHash: string, txHash: string): void;
   getBeliefs(citizenId: string): Belief[];
   upsertBelief(b: Belief): void;
@@ -57,6 +59,8 @@ export class InMemoryWorldStore implements WorldStore {
   }
   getMemories(citizenId: string) { return this.memories.filter((m) => m.citizenId === citizenId); }
   addMemory(m: Memory) { this.memories.push(m); }
+  getPinnedMemories(citizenId: string) { return this.memories.filter((m) => m.citizenId === citizenId && m.pinned); }
+  clearPin(memoryId: string) { const m = this.memories.find((x) => x.id === memoryId); if (m) m.pinned = false; }
   updateMemoryArchive(id: string, rootHash: string, txHash: string) {
     const m = this.memories.find((x) => x.id === id);
     if (m) { m.zgRootHash = rootHash; m.zgTxHash = txHash; }
