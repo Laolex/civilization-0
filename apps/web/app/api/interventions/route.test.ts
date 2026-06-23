@@ -56,6 +56,20 @@ describe("POST /api/interventions — world_event", () => {
     const res = await POST(req({ worldId: "w1", type: "dilemma", headline: "x" }));
     expect(res.status).toBe(400);
   });
+  it("returns 404 when world is missing (world_event)", async () => {
+    const { readWorld } = await import("@civ/persistence/src/read");
+    vi.mocked(readWorld).mockResolvedValueOnce(null);
+    const res = await POST(req({ worldId: "w1", type: "world_event", headline: "A great flood" }));
+    expect(res.status).toBe(404);
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+  it("returns 403 when user is not authorized (world_event)", async () => {
+    const { getCurrentUser } = await import("../../../lib/auth");
+    vi.mocked(getCurrentUser).mockResolvedValueOnce({ id: "u2", plan: "free", email: null, wallet: null, hasApiKey: false });
+    const res = await POST(req({ worldId: "w1", type: "world_event", headline: "A great flood" }));
+    expect(res.status).toBe(403);
+    expect(enqueue).not.toHaveBeenCalled();
+  });
 });
 
 describe("GET /api/interventions", () => {
