@@ -34,6 +34,30 @@ describe("POST /api/interventions", () => {
   });
 });
 
+describe("POST /api/interventions — world_event", () => {
+  it("enqueues a valid world_event (201) with no targetCitizenId", async () => {
+    const res = await POST(req({ worldId: "w1", type: "world_event", headline: "A great flood" }));
+    expect(res.status).toBe(201);
+    expect(enqueue).toHaveBeenCalledOnce();
+    const arg = enqueue.mock.calls[0][0];
+    expect(arg.type).toBe("world_event");
+    expect(arg.payload).toEqual({ headline: "A great flood" });
+    expect(arg.targetCitizenId ?? null).toBeNull();
+  });
+  it("rejects empty headline (400)", async () => {
+    const res = await POST(req({ worldId: "w1", type: "world_event", headline: "" }));
+    expect(res.status).toBe(400);
+  });
+  it("rejects over-cap headline (400)", async () => {
+    const res = await POST(req({ worldId: "w1", type: "world_event", headline: "x".repeat(141) }));
+    expect(res.status).toBe(400);
+  });
+  it("rejects an unknown type (400)", async () => {
+    const res = await POST(req({ worldId: "w1", type: "dilemma", headline: "x" }));
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("GET /api/interventions", () => {
   it("returns 200 with list for authorized user", async () => {
     const res = await GET(new Request("http://x/api/interventions?worldId=w1"));
