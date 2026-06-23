@@ -34,7 +34,7 @@ export interface Relationship {
 
 export interface Memory {
   id: string; citizenId: string; day: number; type: MemoryType;
-  importance: number; summary: string; embedding: number[];
+  importance: number; summary: string; embedding: number[]; pinned?: boolean;
   zgRootHash?: string; zgTxHash?: string;
 }
 

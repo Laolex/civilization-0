@@ -36,6 +36,21 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 CREATE INDEX IF NOT EXISTS memories_citizen_idx ON memories (citizen_id);
 
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS pinned boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS interventions (
+  id text PRIMARY KEY,
+  world_id text NOT NULL,
+  user_id text NOT NULL,
+  type text NOT NULL,
+  target_citizen_id text,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'pending',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  applied_day int
+);
+CREATE INDEX IF NOT EXISTS interventions_status_idx ON interventions (status);
+
 CREATE TABLE IF NOT EXISTS beliefs (
   id TEXT PRIMARY KEY, citizen_id TEXT NOT NULL REFERENCES citizens(id),
   statement TEXT NOT NULL, confidence NUMERIC NOT NULL,
