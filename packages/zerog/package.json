@@ -5,9 +5,10 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
-    "@0gfoundation/0g-storage-ts-sdk": "1.2.10",
     "@0gfoundation/0g-compute-ts-sdk": "0.8.4",
-    "ethers": "^6"
+    "@0gfoundation/0g-storage-ts-sdk": "1.2.10",
+    "ethers": "^6",
+    "opik": "^2.0.76"
   },
   "devDependencies": {
     "dotenv": "^16",

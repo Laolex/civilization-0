@@ -1,8 +1,10 @@
 import { ethers } from "ethers";
 import { createZGComputeNetworkBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { ZeroGComputeBrain, type Chat, type ChatMessage, type ChatResult } from "./brain";
+import type { BrainProvider } from "@civ/brain";
 import type { ZeroGConfig } from "./config";
 import { ZeroGBrainError } from "./errors";
+import { instrumentBrain, instrumentChat } from "./opik-tracing";
 
 type Broker = Awaited<ReturnType<typeof createZGComputeNetworkBroker>>;
 
@@ -60,7 +62,7 @@ export class RealChat implements Chat {
       throw new ZeroGBrainError("0G Compute network request failed", { cause: err });
     }
     if (!res.ok) throw new ZeroGBrainError(`0G Compute HTTP ${res.status}: ${await res.text()}`);
-    const data = await res.json() as { id?: string; choices?: Array<{ message?: { content?: string } }> };
+    const data = await res.json() as { id?: string; choices?: Array<{ message?: { content?: string } }>; usage?: Record<string, number> };
     const content = data.choices?.[0]?.message?.content ?? "";
     const chatID = res.headers.get("ZG-Res-Key") ?? data.id;
     let verified: boolean | undefined;
@@ -74,7 +76,7 @@ export class RealChat implements Chat {
         verification = { error: String(e) };
       }
     }
-    return { content, provider: this.provider, model: this.model, requestId: chatID ?? undefined, verified, verification };
+    return { content, provider: this.provider, model: this.model, requestId: chatID ?? undefined, verified, verification, usage: data.usage };
   }
 }
 
@@ -100,7 +102,9 @@ export async function ensureFunded(broker: Broker, config: ZeroGConfig): Promise
   }
 }
 
-export async function createZeroGComputeBrain(config: ZeroGConfig): Promise<ZeroGComputeBrain> {
+export async function createZeroGComputeBrain(config: ZeroGConfig): Promise<BrainProvider> {
   const chat = await RealChat.create(config);
-  return new ZeroGComputeBrain(chat, chat.modelName);
+  // instrument* are no-op pass-throughs unless OPIK_API_KEY is set.
+  const brain = new ZeroGComputeBrain(instrumentChat(chat), chat.modelName);
+  return instrumentBrain(brain);
 }

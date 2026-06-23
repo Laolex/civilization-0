@@ -5,4 +5,6 @@ export * from "./brain";
 export * from "./download";
 export { RealUploader, createZeroGStorage } from "./real-uploader";
 export { RealChat, createZeroGComputeBrain } from "./real-chat";
+export { instrumentBrain, instrumentChat, getOpikClient, flushOpik } from "./opik-tracing";
+export type { OpikClientLike, OpikTraceLike, OpikSpanLike } from "./opik-tracing";
 export { RealDownloader, createZeroGDownloader } from "./real-downloader";
