@@ -145,6 +145,11 @@ export class WorldRepository {
     await this.pool.query("UPDATE memories SET pinned = false WHERE id = $1", [id]);
   }
 
+  async getCitizenWorldId(id: string): Promise<string | null> {
+    const r = await this.pool.query("SELECT world_id FROM citizens WHERE id = $1", [id]);
+    return r.rows[0]?.world_id ?? null;
+  }
+
   async readWorldView(limit: number): Promise<WorldView> {
     return readWorldView(this.pool, limit);
   }
