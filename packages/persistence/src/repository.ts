@@ -133,6 +133,18 @@ export class WorldRepository {
     return store;
   }
 
+  async addPinnedMemory(m: Memory): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO memories (id,citizen_id,day,type,importance,summary,embedding,pinned)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,true) ON CONFLICT (id) DO NOTHING`,
+      [m.id, m.citizenId, m.day, m.type, m.importance, m.summary,
+       m.embedding.length ? `[${m.embedding.join(",")}]` : null]);
+  }
+
+  async unpinMemory(id: string): Promise<void> {
+    await this.pool.query("UPDATE memories SET pinned = false WHERE id = $1", [id]);
+  }
+
   async readWorldView(limit: number): Promise<WorldView> {
     return readWorldView(this.pool, limit);
   }
