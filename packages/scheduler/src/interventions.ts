@@ -2,6 +2,8 @@ import type { Memory } from "@civ/shared";
 import type { Embedder } from "@civ/memory";
 import type { Intervention } from "@civ/persistence/src/intervention-write";
 
+const MAX_HEADLINE = 140;
+
 export interface DrainDeps {
   pending(): Promise<Intervention[]>;
   applyWhisper(iv: Intervention, day: number): Promise<void>;
@@ -65,8 +67,10 @@ export function makeWorldEventApplier(
   repo: { setWorldHeadline(worldId: string, headline: string): Promise<void> },
 ) {
   return async (iv: Intervention, _day: number): Promise<void> => {
-    const headline = typeof iv.payload.headline === "string" ? iv.payload.headline : "";
+    const raw = typeof iv.payload.headline === "string" ? iv.payload.headline : "";
+    const headline = raw.trim();
     if (!headline) throw new Error("world_event missing headline");
+    if (headline.length > MAX_HEADLINE) throw new Error(`world_event headline exceeds ${MAX_HEADLINE} chars`);
     await repo.setWorldHeadline(iv.worldId, headline);
   };
 }

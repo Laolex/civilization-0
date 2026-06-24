@@ -120,4 +120,33 @@ describe("drainInterventions", () => {
     expect(set).toEqual([["w9", "War breaks out"]]);
     await expect(apply(ivOf({ id: "e2", type: "world_event", payload: {} }), 2)).rejects.toThrow();
   });
+
+  it("makeWorldEventApplier rejects an all-whitespace headline and does not call setWorldHeadline", async () => {
+    const set: Array<[string, string]> = [];
+    const repo = { setWorldHeadline: async (w: string, h: string) => { set.push([w, h]); } };
+    const apply = makeWorldEventApplier(repo);
+    await expect(
+      apply(ivOf({ id: "e3", type: "world_event", worldId: "w9", payload: { headline: "   " } }), 2)
+    ).rejects.toThrow();
+    expect(set).toEqual([]);
+  });
+
+  it("makeWorldEventApplier rejects a headline longer than 140 chars", async () => {
+    const set: Array<[string, string]> = [];
+    const repo = { setWorldHeadline: async (w: string, h: string) => { set.push([w, h]); } };
+    const apply = makeWorldEventApplier(repo);
+    const longHeadline = "A".repeat(141);
+    await expect(
+      apply(ivOf({ id: "e4", type: "world_event", worldId: "w9", payload: { headline: longHeadline } }), 2)
+    ).rejects.toThrow();
+    expect(set).toEqual([]);
+  });
+
+  it("makeWorldEventApplier writes the TRIMMED headline when surrounding whitespace is present", async () => {
+    const set: Array<[string, string]> = [];
+    const repo = { setWorldHeadline: async (w: string, h: string) => { set.push([w, h]); } };
+    const apply = makeWorldEventApplier(repo);
+    await apply(ivOf({ id: "e5", type: "world_event", worldId: "w9", payload: { headline: "  War  " } }), 2);
+    expect(set).toEqual([["w9", "War"]]);
+  });
 });
