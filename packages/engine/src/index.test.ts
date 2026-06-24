@@ -168,4 +168,29 @@ describe("runCitizenTick", () => {
     // No belief drove the decision, so the belief join is legitimately empty.
     expect(store.getDecisionBeliefs(result.decision.id)).toHaveLength(0);
   });
+
+  it("narrows availableActions to the forced set and reports consumedDilemma=true", async () => {
+    const { store, deps } = setup();
+    store.setForcedActions("ada", ["work", "quit_job"]);
+    let seen: string[] = [];
+    deps.brain = new FakeBrain((ctx) => {
+      seen = [...ctx.availableActions];
+      return { action: "work", targetId: null, reasoning: "forced", memoryWeights: {}, beliefWeights: {} };
+    });
+    const result = await runCitizenTick(deps, "ada");
+    expect(seen).toEqual(["work", "quit_job"]);
+    expect(result.consumedDilemma).toBe(true);
+  });
+
+  it("uses all actions and consumedDilemma=false when no dilemma is set", async () => {
+    const { deps } = setup();
+    let seen: string[] = [];
+    deps.brain = new FakeBrain((ctx) => {
+      seen = [...ctx.availableActions];
+      return { action: "work", targetId: null, reasoning: "normal", memoryWeights: {}, beliefWeights: {} };
+    });
+    const result = await runCitizenTick(deps, "ada");
+    expect(seen).toHaveLength(13);
+    expect(result.consumedDilemma).toBe(false);
+  });
 });
