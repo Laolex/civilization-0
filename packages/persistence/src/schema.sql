@@ -125,6 +125,7 @@ INSERT INTO worlds (id,name,owner_id,visibility,population_cap)
 ALTER TABLE worlds ADD COLUMN IF NOT EXISTS headline TEXT NOT NULL DEFAULT '';
 ALTER TABLE citizens ADD COLUMN IF NOT EXISTS world_id TEXT NOT NULL DEFAULT 'genesis';
 CREATE INDEX IF NOT EXISTS citizens_world_idx ON citizens (world_id);
+ALTER TABLE citizens ADD COLUMN IF NOT EXISTS forced_actions JSONB;
 
 -- Wallet auth: a user may sign in by email OR by wallet, so email/password are optional.
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
