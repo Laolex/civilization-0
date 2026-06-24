@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Player interventions — World event (v2)** — second interventions mechanic,
+  built on the whisper substrate. An authorized player sets a standing per-world
+  *headline* that every citizen in that world reasons over on their next tick. A
+  new additive `worlds.headline` column holds the override; `loadContext` overlays
+  a non-empty world headline onto world state (empty `''` falls back to the global
+  `world_state.headline`). The scheduler drain now dispatches by intervention type
+  — `world_event` flows through `makeWorldEventApplier`, which trims, 140-caps, and
+  writes the column — while truly-unknown types are left pending and the never-throw
+  bookkeeping is preserved. `POST /api/interventions` accepts `type: "world_event"`
+  (`targetCitizenId` null, `payload = { headline }`) behind the same `canIntervene`
+  authz (owner always; shared `genesis` gated to `pro`/`research`), enforced
+  independently of the UI. A server-gated `WorldEventBox` on the `/world` genesis
+  dashboard posts it — the control never reaches viewers who may not intervene.
+  Overrides persist until changed.
 - **Player interventions — Whisper (v2)** — first step of turning the sim from a
   read-only observation surface into a game. A signed-in player can "whisper" a
   short suggestion to a citizen; it is enqueued in a new `interventions` queue,
