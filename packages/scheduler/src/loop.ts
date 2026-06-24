@@ -47,6 +47,7 @@ export async function runDay(deps: DayDeps, day: number): Promise<{ ticked: stri
     const result = await runTick(deps.makeTickDeps(store, day), id);
     await deps.repo.persistTick(store, result, id);
     for (const pinId of result.consumedPins ?? []) await deps.repo.unpinMemory(pinId);
+    if (result.consumedDilemma) await deps.repo.clearForcedActions(id);
     await deps.repo.adjustWealth(id, economicDelta(result.decision.action));
     if (deps.orgEffects) await applyOrgEffect(deps.orgEffects, result, id, day);
   }
