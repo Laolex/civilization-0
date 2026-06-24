@@ -53,7 +53,7 @@ describe("POST /api/interventions — world_event", () => {
     expect(res.status).toBe(400);
   });
   it("rejects an unknown type (400)", async () => {
-    const res = await POST(req({ worldId: "w1", type: "dilemma", headline: "x" }));
+    const res = await POST(req({ worldId: "w1", type: "prophecy", headline: "x" }));
     expect(res.status).toBe(400);
   });
   it("returns 404 when world is missing (world_event)", async () => {
@@ -67,6 +67,52 @@ describe("POST /api/interventions — world_event", () => {
     const { getCurrentUser } = await import("../../../lib/auth");
     vi.mocked(getCurrentUser).mockResolvedValueOnce({ id: "u2", plan: "free", email: null, wallet: null, hasApiKey: false });
     const res = await POST(req({ worldId: "w1", type: "world_event", headline: "A great flood" }));
+    expect(res.status).toBe(403);
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/interventions — dilemma", () => {
+  it("enqueues a valid dilemma (201) with text + actions payload", async () => {
+    const res = await POST(req({ worldId: "w1", type: "dilemma", targetCitizenId: "ada",
+      text: "Stay or leave?", actions: ["work", "quit_job"] }));
+    expect(res.status).toBe(201);
+    expect(enqueue).toHaveBeenCalledOnce();
+    const arg = enqueue.mock.calls[0][0];
+    expect(arg.type).toBe("dilemma");
+    expect(arg.targetCitizenId).toBe("ada");
+    expect(arg.payload).toEqual({ text: "Stay or leave?", actions: ["work", "quit_job"] });
+  });
+  it("rejects fewer than 2 actions (400)", async () => {
+    const res = await POST(req({ worldId: "w1", type: "dilemma", targetCitizenId: "ada",
+      text: "x", actions: ["work"] }));
+    expect(res.status).toBe(400);
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+  it("rejects an unknown action verb (400)", async () => {
+    const res = await POST(req({ worldId: "w1", type: "dilemma", targetCitizenId: "ada",
+      text: "x", actions: ["work", "fly"] }));
+    expect(res.status).toBe(400);
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+  it("rejects empty text (400)", async () => {
+    const res = await POST(req({ worldId: "w1", type: "dilemma", targetCitizenId: "ada",
+      text: "", actions: ["work", "quit_job"] }));
+    expect(res.status).toBe(400);
+  });
+  it("returns 404 when the world is missing (dilemma)", async () => {
+    const { readWorld } = await import("@civ/persistence/src/read");
+    vi.mocked(readWorld).mockResolvedValueOnce(null);
+    const res = await POST(req({ worldId: "w1", type: "dilemma", targetCitizenId: "ada",
+      text: "x", actions: ["work", "quit_job"] }));
+    expect(res.status).toBe(404);
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+  it("returns 403 when the user is not authorized (dilemma)", async () => {
+    const { getCurrentUser } = await import("../../../lib/auth");
+    vi.mocked(getCurrentUser).mockResolvedValueOnce({ id: "u2", plan: "free", email: null, wallet: null, hasApiKey: false });
+    const res = await POST(req({ worldId: "w1", type: "dilemma", targetCitizenId: "ada",
+      text: "x", actions: ["work", "quit_job"] }));
     expect(res.status).toBe(403);
     expect(enqueue).not.toHaveBeenCalled();
   });
