@@ -9,6 +9,7 @@ import { buildLifeStory } from "../../../lib/lifestory";
 import { CausalChain } from "../../../components/CausalChain";
 import { LiveDot } from "../../../components/LiveDot";
 import { WhisperBox } from "../../../components/WhisperBox";
+import { DilemmaBox } from "../../../components/DilemmaBox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -225,6 +226,12 @@ export default async function CitizenPage({ params }: { params: { id: string } }
       {showWhisper && citizen.worldId && (
         <section className="cz-section">
           <WhisperBox worldId={citizen.worldId} citizenId={id} citizenName={citizen.name} />
+        </section>
+      )}
+
+      {showWhisper && citizen.worldId && (
+        <section className="cz-section">
+          <DilemmaBox worldId={citizen.worldId} citizenId={id} citizenName={citizen.name} />
         </section>
       )}
 
