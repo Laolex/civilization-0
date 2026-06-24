@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { Citizen, Memory } from "@civ/shared";
+import type { ActionType, Citizen, Memory } from "@civ/shared";
 import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
@@ -19,6 +19,15 @@ export class WorldRepository {
 
   async setWorldHeadline(worldId: string, headline: string): Promise<void> {
     await this.pool.query("UPDATE worlds SET headline = $2 WHERE id = $1", [worldId, headline]);
+  }
+
+  async setForcedActions(citizenId: string, actions: ActionType[]): Promise<void> {
+    await this.pool.query("UPDATE citizens SET forced_actions = $2 WHERE id = $1",
+      [citizenId, JSON.stringify(actions)]);
+  }
+
+  async clearForcedActions(citizenId: string): Promise<void> {
+    await this.pool.query("UPDATE citizens SET forced_actions = NULL WHERE id = $1", [citizenId]);
   }
 
   async adjustWealth(citizenId: string, delta: number): Promise<void> {
@@ -115,6 +124,9 @@ export class WorldRepository {
       store.upsertCitizen({ id: r.id, name: r.name, occupation: r.occupation, age: r.age,
         traits: r.traits, wealth: Number(r.wealth), reputation: Number(r.reputation),
         tier: r.tier, createdDay: r.created_day });
+      if (Array.isArray(r.forced_actions) && r.forced_actions.length > 0) {
+        store.setForcedActions(r.id, r.forced_actions as ActionType[]);
+      }
     }
     const worldId = c.rows[0]?.world_id;
     if (worldId) {
