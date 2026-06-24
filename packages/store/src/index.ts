@@ -1,5 +1,5 @@
 import type {
-  Belief, Citizen, Decision, DecisionBelief, DecisionMemory, DecisionTrace,
+  ActionType, Belief, Citizen, Decision, DecisionBelief, DecisionMemory, DecisionTrace,
   Goal, Memory, Relationship, WorldEvent, WorldState, WorldSnapshot,
 } from "@civ/shared";
 
@@ -14,6 +14,8 @@ export interface WorldStore {
   addMemory(m: Memory): void;
   getPinnedMemories(citizenId: string): Memory[];
   clearPin(memoryId: string): void;
+  getForcedActions(citizenId: string): ActionType[] | null;
+  setForcedActions(citizenId: string, actions: ActionType[] | null): void;
   updateMemoryArchive(id: string, rootHash: string, txHash: string): void;
   getBeliefs(citizenId: string): Belief[];
   upsertBelief(b: Belief): void;
@@ -45,6 +47,7 @@ export class InMemoryWorldStore implements WorldStore {
   private events = new Map<string, WorldEvent>();
   private traces: DecisionTrace[] = [];
   private world: WorldState = { day: 0, economy: {}, headline: "" };
+  private forcedActions = new Map<string, ActionType[]>();
 
   getCitizen(id: string) { return this.citizens.get(id); }
   upsertCitizen(c: Citizen) { this.citizens.set(c.id, c); }
@@ -61,6 +64,11 @@ export class InMemoryWorldStore implements WorldStore {
   addMemory(m: Memory) { this.memories.push(m); }
   getPinnedMemories(citizenId: string) { return this.memories.filter((m) => m.citizenId === citizenId && m.pinned); }
   clearPin(memoryId: string) { const m = this.memories.find((x) => x.id === memoryId); if (m) m.pinned = false; }
+  getForcedActions(citizenId: string): ActionType[] | null { return this.forcedActions.get(citizenId) ?? null; }
+  setForcedActions(citizenId: string, actions: ActionType[] | null): void {
+    if (actions === null) this.forcedActions.delete(citizenId);
+    else this.forcedActions.set(citizenId, actions);
+  }
   updateMemoryArchive(id: string, rootHash: string, txHash: string) {
     const m = this.memories.find((x) => x.id === id);
     if (m) { m.zgRootHash = rootHash; m.zgTxHash = txHash; }

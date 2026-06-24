@@ -73,4 +73,13 @@ describe("InMemoryWorldStore", () => {
     s.clearPin("p1");
     expect(s.getPinnedMemories("ada")).toHaveLength(0);
   });
+
+  it("sets, reads, and clears per-citizen forced actions (absence => null)", () => {
+    const s = new InMemoryWorldStore();
+    expect(s.getForcedActions("ada")).toBeNull();
+    s.setForcedActions("ada", ["work", "quit_job"]);
+    expect(s.getForcedActions("ada")).toEqual(["work", "quit_job"]);
+    s.setForcedActions("ada", null);
+    expect(s.getForcedActions("ada")).toBeNull();
+  });
 });
