@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Player interventions — Dilemma (v2)** — third interventions mechanic, the
+  first that constrains a citizen's *choice*. An authorized player forces a
+  target citizen, on their next tick, into a framed decision: a short framing
+  line plus a whitelist of 2+ allowed actions. The framing line reuses the
+  whisper pinned-memory substrate (importance-10 pin `dl-${iv.id}`, cleared via
+  the existing one-shot `consumedPins` path); the only new substrate is a
+  nullable `citizens.forced_actions` column that narrows the engine's
+  `availableActions` for exactly one tick (the 0G brain honors it at both the
+  prompt and the parse layer), then is cleared one-shot by the day loop. The
+  drain dispatches `dilemma` through `makeDilemmaApplier`, which validates a 2+
+  subset of the 13 action verbs, confirms the citizen is in the world, sets the
+  column, and writes the framing pin. `POST /api/interventions` accepts
+  `type: "dilemma"` (`payload = { text, actions }`) behind the same
+  `canIntervene` authz, enforced independently of the UI. A server-gated
+  `DilemmaBox` on the citizen page posts it. One-shot, last-wins, additive and
+  back-compatible.
 - **Player interventions — World event (v2)** — second interventions mechanic,
   built on the whisper substrate. An authorized player sets a standing per-world
   *headline* that every citizen in that world reasons over on their next tick. A
