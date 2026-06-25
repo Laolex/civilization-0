@@ -29,6 +29,12 @@ describe("shared", () => {
     };
     expect(c.name).toBe("Ada");
   });
+
+  it("Memory carries an optional pinned flag", () => {
+    const m: import("./index").Memory = { id: "m1", citizenId: "ada", day: 1,
+      type: "relationship", importance: 10, summary: "trust Marcus less", embedding: [1], pinned: true };
+    expect(m.pinned).toBe(true);
+  });
 });
 
 describe("ExecutionMeta", () => {

@@ -1,11 +1,15 @@
 import React from "react";
 import Link from "next/link";
 import { getPool } from "@civ/persistence/src/pool";
-import { readCitizen, readRelationships, readGoals, readDecisionChainRaw, searchEvents, readNarrative } from "@civ/persistence/src/read";
+import { readCitizen, readRelationships, readGoals, readDecisionChainRaw, searchEvents, readNarrative, readWorld } from "@civ/persistence/src/read";
+import { canIntervene } from "@civ/persistence/src/intervention-authz";
+import { getCurrentUser } from "../../../lib/auth";
 import { toCausalChain } from "../../../lib/citizen-db";
 import { buildLifeStory } from "../../../lib/lifestory";
 import { CausalChain } from "../../../components/CausalChain";
 import { LiveDot } from "../../../components/LiveDot";
+import { WhisperBox } from "../../../components/WhisperBox";
+import { DilemmaBox } from "../../../components/DilemmaBox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +49,13 @@ export default async function CitizenPage({ params }: { params: { id: string } }
         </nav>
       </main>
     );
+  }
+
+  const viewer = await getCurrentUser();
+  let showWhisper = false;
+  if (viewer && citizen.worldId) {
+    const world = await readWorld(getPool(), citizen.worldId);
+    if (world) showWhisper = canIntervene({ id: viewer.id, plan: viewer.plan }, { id: world.id, ownerId: world.ownerId });
   }
 
   const [rels, goals, events, chainRaw, narrative] = await Promise.all([
@@ -211,6 +222,18 @@ export default async function CitizenPage({ params }: { params: { id: string } }
           </ol>
         )}
       </section>
+
+      {showWhisper && citizen.worldId && (
+        <section className="cz-section">
+          <WhisperBox worldId={citizen.worldId} citizenId={id} citizenName={citizen.name} />
+        </section>
+      )}
+
+      {showWhisper && citizen.worldId && (
+        <section className="cz-section">
+          <DilemmaBox worldId={citizen.worldId} citizenId={id} citizenName={citizen.name} />
+        </section>
+      )}
 
       <nav className="board-foot" aria-label="Navigation">
         <Link href="/map" className="board-foot-cta">◉ Living map</Link>

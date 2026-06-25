@@ -10,6 +10,8 @@ import type { TickDeps } from "@civ/engine";
 import type { InMemoryWorldStore } from "@civ/store";
 import { runDay } from "../src/loop";
 import type { Ticker } from "../src/select";
+import { drainInterventions, makeWhisperApplier, makeWorldEventApplier, makeDilemmaApplier } from "../src/interventions";
+import { pendingInterventions, markInterventionApplied, markInterventionFailed } from "@civ/persistence/src/intervention-write";
 
 async function main() {
   // Parse --days N from argv (default 1)
@@ -48,6 +50,13 @@ async function main() {
 
   const repo = new WorldRepository();
 
+  const applyWhisper = makeWhisperApplier(repo, embedder);
+  const applyWorldEvent = makeWorldEventApplier(repo);
+  const applyDilemma = makeDilemmaApplier(repo, embedder);
+  const drain = (day: number) => drainInterventions(
+    { pending: pendingInterventions, applyWhisper, applyWorldEvent, applyDilemma, markApplied: markInterventionApplied, markFailed: markInterventionFailed },
+    day);
+
   // Load the population for tier selection from DB
   const cs = await getPool().query("SELECT id, tier FROM citizens");
   const citizens: Ticker[] = cs.rows.map((r: { id: string; tier: number }) => ({
@@ -75,7 +84,7 @@ async function main() {
       break;
     }
     const next = day + 1;
-    const out = await runDay({ repo, makeTickDeps, citizens }, next);
+    const out = await runDay({ repo, makeTickDeps, citizens, drain }, next);
     day = next;
     console.log(`Day ${day} ticked: [${out.ticked.join(", ")}]`);
   }

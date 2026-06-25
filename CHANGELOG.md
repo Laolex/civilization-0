@@ -8,6 +8,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Player interventions — Dilemma (v2)** — third interventions mechanic, the
+  first that constrains a citizen's *choice*. An authorized player forces a
+  target citizen, on their next tick, into a framed decision: a short framing
+  line plus a whitelist of 2+ allowed actions. The framing line reuses the
+  whisper pinned-memory substrate (importance-10 pin `dl-${iv.id}`, cleared via
+  the existing one-shot `consumedPins` path); the only new substrate is a
+  nullable `citizens.forced_actions` column that narrows the engine's
+  `availableActions` for exactly one tick (the 0G brain honors it at both the
+  prompt and the parse layer), then is cleared one-shot by the day loop. The
+  drain dispatches `dilemma` through `makeDilemmaApplier`, which validates a 2+
+  subset of the 13 action verbs, confirms the citizen is in the world, sets the
+  column, and writes the framing pin. `POST /api/interventions` accepts
+  `type: "dilemma"` (`payload = { text, actions }`) behind the same
+  `canIntervene` authz, enforced independently of the UI. A server-gated
+  `DilemmaBox` on the citizen page posts it. One-shot, last-wins, additive and
+  back-compatible.
+- **Player interventions — World event (v2)** — second interventions mechanic,
+  built on the whisper substrate. An authorized player sets a standing per-world
+  *headline* that every citizen in that world reasons over on their next tick. A
+  new additive `worlds.headline` column holds the override; `loadContext` overlays
+  a non-empty world headline onto world state (empty `''` falls back to the global
+  `world_state.headline`). The scheduler drain now dispatches by intervention type
+  — `world_event` flows through `makeWorldEventApplier`, which trims, 140-caps, and
+  writes the column — while truly-unknown types are left pending and the never-throw
+  bookkeeping is preserved. `POST /api/interventions` accepts `type: "world_event"`
+  (`targetCitizenId` null, `payload = { headline }`) behind the same `canIntervene`
+  authz (owner always; shared `genesis` gated to `pro`/`research`), enforced
+  independently of the UI. A server-gated `WorldEventBox` on the `/world` genesis
+  dashboard posts it — the control never reaches viewers who may not intervene.
+  Overrides persist until changed.
+- **Player interventions — Whisper (v2)** — first step of turning the sim from a
+  read-only observation surface into a game. A signed-in player can "whisper" a
+  short suggestion to a citizen; it is enqueued in a new `interventions` queue,
+  drained at the start of the next scheduler day into a *pinned* importance-10
+  memory, and force-included in that citizen's next 0G decision regardless of
+  similarity retrieval (then cleared after one tick). Authorization via
+  `canIntervene`: a world owner may always intervene in their own world; the
+  shared `genesis` world is gated to premium plans (`pro`/`research`).
+  `POST/GET /api/interventions` enforces auth + authz + a 280-char cap, with a
+  defense-in-depth citizen-in-world check at both enqueue and apply time; a
+  server-gated `WhisperBox` appears on the citizen page only for viewers who may
+  intervene. Substrate for the deferred world-event and dilemma mechanics.
 - **Offline experiment harness** (`@civ/zerog/eval`). Run a curated set of
   decision scenarios through a brain variant, grade each with the 0G judge, and
   log an Opik **experiment** with aggregated `in_character`/`goal_alignment`

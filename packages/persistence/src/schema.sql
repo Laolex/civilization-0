@@ -36,6 +36,21 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 CREATE INDEX IF NOT EXISTS memories_citizen_idx ON memories (citizen_id);
 
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS pinned boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS interventions (
+  id text PRIMARY KEY,
+  world_id text NOT NULL,
+  user_id text NOT NULL,
+  type text NOT NULL,
+  target_citizen_id text,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'pending',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  applied_day int
+);
+CREATE INDEX IF NOT EXISTS interventions_status_idx ON interventions (status);
+
 CREATE TABLE IF NOT EXISTS beliefs (
   id TEXT PRIMARY KEY, citizen_id TEXT NOT NULL REFERENCES citizens(id),
   statement TEXT NOT NULL, confidence NUMERIC NOT NULL,
@@ -107,8 +122,10 @@ CREATE TABLE IF NOT EXISTS worlds (
 );
 INSERT INTO worlds (id,name,owner_id,visibility,population_cap)
   VALUES ('genesis','Genesis',NULL,'public',1000) ON CONFLICT (id) DO NOTHING;
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS headline TEXT NOT NULL DEFAULT '';
 ALTER TABLE citizens ADD COLUMN IF NOT EXISTS world_id TEXT NOT NULL DEFAULT 'genesis';
 CREATE INDEX IF NOT EXISTS citizens_world_idx ON citizens (world_id);
+ALTER TABLE citizens ADD COLUMN IF NOT EXISTS forced_actions JSONB;
 
 -- Wallet auth: a user may sign in by email OR by wallet, so email/password are optional.
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
@@ -129,6 +146,7 @@ ALTER TABLE citizens           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE relationships      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memories           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE interventions      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE beliefs            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE decisions          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE decision_memories  ENABLE ROW LEVEL SECURITY;

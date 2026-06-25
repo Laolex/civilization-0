@@ -15,6 +15,8 @@ export interface DayDeps {
   makeTickDeps: (store: InMemoryWorldStore, day: number) => TickDeps;
   citizens: Ticker[];
   orgEffects?: OrgEffects;
+  drain?: (day: number) => Promise<{ applied: number; failed: number }>;
+  runTick?: (deps: TickDeps, id: string) => Promise<TickResult>;
 }
 
 /** Founds an org for a citizen + a founder membership. Returns the new org id. */
@@ -37,11 +39,15 @@ async function applyOrgEffect(eff: OrgEffects, result: TickResult, citizenId: st
 }
 
 export async function runDay(deps: DayDeps, day: number): Promise<{ ticked: string[] }> {
+  if (deps.drain) await deps.drain(day);
+  const runTick = deps.runTick ?? runCitizenTick;
   const ids = selectTickers(deps.citizens, day);
   for (const id of ids) {
     const store = await deps.repo.loadContext(id);
-    const result = await runCitizenTick(deps.makeTickDeps(store, day), id);
+    const result = await runTick(deps.makeTickDeps(store, day), id);
     await deps.repo.persistTick(store, result, id);
+    for (const pinId of result.consumedPins ?? []) await deps.repo.unpinMemory(pinId);
+    if (result.consumedDilemma) await deps.repo.clearForcedActions(id);
     await deps.repo.adjustWealth(id, economicDelta(result.decision.action));
     if (deps.orgEffects) await applyOrgEffect(deps.orgEffects, result, id, day);
   }

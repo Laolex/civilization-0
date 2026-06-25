@@ -7,11 +7,15 @@ import {
   readWorldView,
   readProofStats,
   readOrgList,
+  readWorld,
   type WorldView,
   type ProofStats,
 } from "@civ/persistence/src/read";
+import { canIntervene } from "@civ/persistence/src/intervention-authz";
+import { getCurrentUser } from "../../lib/auth";
 import { topCitizens, recent, population } from "../../lib/dashboard";
 import { LiveDot } from "../../components/LiveDot";
+import { WorldEventBox } from "../../components/WorldEventBox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +89,15 @@ export default async function WorldPage() {
     );
   }
 
+  let showWorldEvent = false;
+  try {
+    const viewer = await getCurrentUser();
+    if (viewer) {
+      const gw = await readWorld(getPool(), "genesis");
+      if (gw) showWorldEvent = canIntervene({ id: viewer.id, plan: viewer.plan }, { id: gw.id, ownerId: gw.ownerId });
+    }
+  } catch { showWorldEvent = false; }
+
   const nameOf = new Map(view.citizens.map((c) => [c.id, c.name] as const));
   const isCitizen = (id: string) => nameOf.has(id);
   const label = (id: string) => nameOf.get(id) ?? id;
@@ -116,6 +129,8 @@ export default async function WorldPage() {
           with no key and no trust in us.
         </p>
       </header>
+
+      {showWorldEvent && <WorldEventBox worldId="genesis" />}
 
       {/* ── Instrument cluster: proof density, one panel divided into cells ── */}
       <section className="cluster" aria-label="World state and proof density">

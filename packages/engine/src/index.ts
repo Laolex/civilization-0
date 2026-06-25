@@ -9,6 +9,11 @@ import type { BrainProvider } from "@civ/brain";
 import type { StorageProvider } from "@civ/storage";
 import type { ExplainabilityService } from "@civ/explainability";
 
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+}
+
 export const MAJOR_ACTIONS: ActionType[] = [
   "start_company", "partner", "betray", "hire", "quit_job", "invest",
 ];
@@ -33,6 +38,8 @@ export interface TickResult {
   event: WorldEvent;
   trace: DecisionTrace;
   storedMemory: Memory | null;
+  consumedPins: string[];
+  consumedDilemma: boolean;
 }
 
 export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise<TickResult> {
@@ -45,13 +52,17 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
 
   // 1-2. Observe + retrieve
   const query = `${goal?.description ?? ""} ${worldState.headline}`.trim();
-  const memories = memoryIndex.retrieve(citizenId, query, RETRIEVE_K);
+  const retrieved = memoryIndex.retrieve(citizenId, query, RETRIEVE_K);
+  const pinned = store.getPinnedMemories(citizenId);
+  const memories = dedupeById([...pinned, ...retrieved]);
   const beliefs = store.getBeliefs(citizenId);
   const relationships = store.getRelationships(citizenId);
 
-  // 3-4. Build context + decide
+  // 3-4. Build context + decide. A queued dilemma narrows the choice set for
+  // this one tick; the brain honors it at both the prompt and the parse layer.
+  const forced = store.getForcedActions(citizenId);
   const result = await brain.decide({
-    citizen, goal, memories, beliefs, relationships, worldState, availableActions: ALL_ACTIONS,
+    citizen, goal, memories, beliefs, relationships, worldState, availableActions: forced ?? ALL_ACTIONS,
   });
 
   // 5. Build the event (written to the store after its causal decision, below).
@@ -125,5 +136,8 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
     store.updateEventArchive(event.id, res.rootHash, res.txHash);
   }
 
-  return { decision, event, trace, storedMemory };
+  const consumedPins = pinned.map((m) => m.id);
+  for (const id of consumedPins) store.clearPin(id);
+
+  return { decision, event, trace, storedMemory, consumedPins, consumedDilemma: forced != null };
 }

@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { Citizen, Memory } from "@civ/shared";
+import type { ActionType, Citizen, Memory } from "@civ/shared";
 import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
@@ -15,6 +15,19 @@ export class WorldRepository {
 
   async setDay(day: number): Promise<void> {
     await this.pool.query("UPDATE world_state SET day = $1 WHERE id = 1", [day]);
+  }
+
+  async setWorldHeadline(worldId: string, headline: string): Promise<void> {
+    await this.pool.query("UPDATE worlds SET headline = $2 WHERE id = $1", [worldId, headline]);
+  }
+
+  async setForcedActions(citizenId: string, actions: ActionType[]): Promise<void> {
+    await this.pool.query("UPDATE citizens SET forced_actions = $2 WHERE id = $1",
+      [citizenId, JSON.stringify(actions)]);
+  }
+
+  async clearForcedActions(citizenId: string): Promise<void> {
+    await this.pool.query("UPDATE citizens SET forced_actions = NULL WHERE id = $1", [citizenId]);
   }
 
   async adjustWealth(citizenId: string, delta: number): Promise<void> {
@@ -111,6 +124,17 @@ export class WorldRepository {
       store.upsertCitizen({ id: r.id, name: r.name, occupation: r.occupation, age: r.age,
         traits: r.traits, wealth: Number(r.wealth), reputation: Number(r.reputation),
         tier: r.tier, createdDay: r.created_day });
+      if (Array.isArray(r.forced_actions) && r.forced_actions.length > 0) {
+        store.setForcedActions(r.id, r.forced_actions as ActionType[]);
+      }
+    }
+    const worldId = c.rows[0]?.world_id;
+    if (worldId) {
+      const wr = await this.pool.query("SELECT headline FROM worlds WHERE id = $1", [worldId]);
+      const wh = wr.rows[0]?.headline;
+      if (typeof wh === "string" && wh.length > 0) {
+        store.setWorldState({ ...store.getWorldState(), headline: wh });
+      }
     }
     const goals = await this.pool.query("SELECT * FROM goals WHERE citizen_id = $1", [citizenId]);
     for (const g of goals.rows) store.upsertGoal({ id: g.id, citizenId: g.citizen_id, kind: g.kind,
@@ -119,7 +143,7 @@ export class WorldRepository {
     const mems = await this.pool.query("SELECT * FROM memories WHERE citizen_id = $1", [citizenId]);
     for (const m of mems.rows) store.addMemory({ id: m.id, citizenId: m.citizen_id, day: m.day,
       type: m.type, importance: m.importance, summary: m.summary, embedding: fromVector(m.embedding),
-      zgRootHash: m.zg_root_hash ?? undefined, zgTxHash: m.zg_tx_hash ?? undefined });
+      zgRootHash: m.zg_root_hash ?? undefined, zgTxHash: m.zg_tx_hash ?? undefined, pinned: m.pinned ?? false });
 
     const beliefs = await this.pool.query("SELECT * FROM beliefs WHERE citizen_id = $1", [citizenId]);
     for (const b of beliefs.rows) store.upsertBelief({ id: b.id, citizenId: b.citizen_id,
@@ -131,6 +155,23 @@ export class WorldRepository {
       trust: Number(rel.trust), friendship: Number(rel.friendship), influence: Number(rel.influence) });
 
     return store;
+  }
+
+  async addPinnedMemory(m: Memory): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO memories (id,citizen_id,day,type,importance,summary,embedding,pinned)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,true) ON CONFLICT (id) DO NOTHING`,
+      [m.id, m.citizenId, m.day, m.type, m.importance, m.summary,
+       m.embedding.length ? `[${m.embedding.join(",")}]` : null]);
+  }
+
+  async unpinMemory(id: string): Promise<void> {
+    await this.pool.query("UPDATE memories SET pinned = false WHERE id = $1", [id]);
+  }
+
+  async getCitizenWorldId(id: string): Promise<string | null> {
+    const r = await this.pool.query("SELECT world_id FROM citizens WHERE id = $1", [id]);
+    return r.rows[0]?.world_id ?? null;
   }
 
   async readWorldView(limit: number): Promise<WorldView> {

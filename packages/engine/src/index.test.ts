@@ -91,6 +91,48 @@ describe("runCitizenTick", () => {
     expect(store.getTrace(result.decision.id)?.trace.meta?.verified).toBe(true);
   });
 
+  it("force-includes pinned memories and reports them in consumedPins", async () => {
+    const store = new InMemoryWorldStore();
+    const embedder = new FakeEmbedder();
+    store.upsertCitizen({ id: "ada", name: "Ada", occupation: "Engineer", age: 29,
+      traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
+      wealth: 0, reputation: 50, tier: 3, createdDay: 0 });
+    store.upsertGoal({ id: "g1", citizenId: "ada", kind: "wealth", description: "financial independence", progress: 0.1, active: true });
+    store.setWorldState({ day: 5, economy: {}, headline: "Recession deepens" });
+
+    // Pinned memory uses tokens that do NOT appear in the query, so similarity == 0
+    // and it would be excluded by retrieval alone.
+    store.addMemory({ id: "p-whisper", citizenId: "ada", day: 1, type: "relationship", importance: 1,
+      summary: "zxyzxyzxy qqqqqqqq", embedding: embedder.embed("zxyzxyzxy qqqqqqqq"), pinned: true });
+
+    // 5 normal memories that match the query well — exactly RETRIEVE_K, so retrieval fills the slot.
+    for (let i = 1; i <= 5; i++) {
+      store.addMemory({ id: `m-normal-${i}`, citizenId: "ada", day: i, type: "event", importance: 9,
+        summary: `financial independence recession deepens normal ${i}`,
+        embedding: embedder.embed(`financial independence recession deepens normal ${i}`) });
+    }
+
+    let sawPinned = false;
+    let n = 0;
+    const brain = new FakeBrain((ctx) => {
+      sawPinned = ctx.memories.some((m) => m.id === "p-whisper");
+      return { action: "work", targetId: null, reasoning: "pin test", memoryWeights: {}, beliefWeights: {} };
+    });
+    const storage = new FakeStorage();
+    const deps: TickDeps = {
+      store, embedder, memoryIndex: new MemoryIndex(store, embedder),
+      reviser: new RuleBasedBeliefReviser(), brain, storage,
+      explain: new ExplainabilityService(storage),
+      clock: { day: 5 }, idgen: () => `id${++n}`,
+    };
+
+    const result = await runCitizenTick(deps, "ada");
+    expect(sawPinned).toBe(true);
+    expect(result.consumedPins).toContain("p-whisper");
+    // Pin is cleared after the tick
+    expect(store.getPinnedMemories("ada")).toHaveLength(0);
+  });
+
   it("records only the brain-weighted inputs as the cause, excluding merely-retrieved ones", async () => {
     const store = new InMemoryWorldStore();
     const embedder = new FakeEmbedder();
@@ -125,5 +167,30 @@ describe("runCitizenTick", () => {
     expect(dmIds).not.toContain("m1");  // a merely-retrieved memory is NOT recorded as cause
     // No belief drove the decision, so the belief join is legitimately empty.
     expect(store.getDecisionBeliefs(result.decision.id)).toHaveLength(0);
+  });
+
+  it("narrows availableActions to the forced set and reports consumedDilemma=true", async () => {
+    const { store, deps } = setup();
+    store.setForcedActions("ada", ["work", "quit_job"]);
+    let seen: string[] = [];
+    deps.brain = new FakeBrain((ctx) => {
+      seen = [...ctx.availableActions];
+      return { action: "work", targetId: null, reasoning: "forced", memoryWeights: {}, beliefWeights: {} };
+    });
+    const result = await runCitizenTick(deps, "ada");
+    expect(seen).toEqual(["work", "quit_job"]);
+    expect(result.consumedDilemma).toBe(true);
+  });
+
+  it("uses all actions and consumedDilemma=false when no dilemma is set", async () => {
+    const { deps } = setup();
+    let seen: string[] = [];
+    deps.brain = new FakeBrain((ctx) => {
+      seen = [...ctx.availableActions];
+      return { action: "work", targetId: null, reasoning: "normal", memoryWeights: {}, beliefWeights: {} };
+    });
+    const result = await runCitizenTick(deps, "ada");
+    expect(seen).toHaveLength(13);
+    expect(result.consumedDilemma).toBe(false);
   });
 });
