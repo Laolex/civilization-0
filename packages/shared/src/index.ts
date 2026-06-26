@@ -104,6 +104,14 @@ export interface ScoredNeighbor {
   blendedScore: number;         // relationshipStrength * relevance
 }
 
+export interface OrgContext {
+  id: string;
+  name: string;
+  kind: OrgKind;
+  latestAction?: ActionType;
+  latestReasoning?: string;
+}
+
 export interface WorldState {
   day: number; economy: Record<string, number>; headline: string;
 }
