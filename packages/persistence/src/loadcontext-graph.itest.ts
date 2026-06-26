@@ -50,6 +50,7 @@ describe("loadContext graph hydration", () => {
     const marcus = cands.find((c) => c.id === "marcus")!;
     expect(marcus.relationship.trust).toBe(70);
     expect(marcus.latestAction).toBe("invest");
+    expect(marcus.latestReasoning).toBe("backed ada");
     expect(marcus.topGoal).toBe("grow capital");
     expect(marcus.strongestBelief).toBe("Ada is promising");
     expect(marcus.wealth).toBe(100000);

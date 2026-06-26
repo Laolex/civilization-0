@@ -159,49 +159,53 @@ export class WorldRepository {
     for (const rel of rels.rows) store.upsertRelationship({ citizenId: rel.citizen_id, otherId: rel.other_id,
       trust: Number(rel.trust), friendship: Number(rel.friendship), influence: Number(rel.influence) });
 
-    const wid = worldId ?? "genesis";
-    const nb = await this.pool.query(
-      `SELECT r.other_id AS id, c.name, c.wealth, c.reputation,
-              r.trust, r.friendship, r.influence,
-              d.action AS latest_action, d.reasoning AS latest_reasoning,
-              g.description AS top_goal, b.statement AS strongest_belief
-         FROM relationships r
-         JOIN citizens c ON c.id = r.other_id AND c.world_id = $2
-         LEFT JOIN LATERAL (SELECT action, reasoning FROM decisions
-            WHERE citizen_id = r.other_id ORDER BY day DESC LIMIT 1) d ON true
-         LEFT JOIN LATERAL (SELECT description FROM goals
-            WHERE citizen_id = r.other_id AND active ORDER BY progress DESC LIMIT 1) g ON true
-         LEFT JOIN LATERAL (SELECT statement FROM beliefs
-            WHERE citizen_id = r.other_id ORDER BY confidence DESC LIMIT 1) b ON true
-        WHERE r.citizen_id = $1
-        ORDER BY (r.trust + r.influence) DESC, r.other_id
-        LIMIT $3`,
-      [citizenId, wid, NEIGHBOR_CANDIDATE_LIMIT]);
-    const candidates: NeighborSummary[] = nb.rows.map((x) => ({
-      id: x.id, name: x.name,
-      relationship: { trust: Number(x.trust), friendship: Number(x.friendship), influence: Number(x.influence) },
-      latestAction: x.latest_action ? (x.latest_action as ActionType) : undefined,
-      latestReasoning: clip(x.latest_reasoning),
-      topGoal: clip(x.top_goal), strongestBelief: clip(x.strongest_belief),
-      wealth: Number(x.wealth), reputation: Number(x.reputation),
-    }));
-    store.setNeighborCandidates(citizenId, candidates);
+    try {
+      const wid = worldId ?? "genesis";
+      const nb = await this.pool.query(
+        `SELECT r.other_id AS id, c.name, c.wealth, c.reputation,
+                r.trust, r.friendship, r.influence,
+                d.action AS latest_action, d.reasoning AS latest_reasoning,
+                g.description AS top_goal, b.statement AS strongest_belief
+           FROM relationships r
+           JOIN citizens c ON c.id = r.other_id AND c.world_id = $2
+           LEFT JOIN LATERAL (SELECT action, reasoning FROM decisions
+              WHERE citizen_id = r.other_id ORDER BY day DESC LIMIT 1) d ON true
+           LEFT JOIN LATERAL (SELECT description FROM goals
+              WHERE citizen_id = r.other_id AND active ORDER BY progress DESC LIMIT 1) g ON true
+           LEFT JOIN LATERAL (SELECT statement FROM beliefs
+              WHERE citizen_id = r.other_id ORDER BY confidence DESC LIMIT 1) b ON true
+          WHERE r.citizen_id = $1
+          ORDER BY (r.trust + r.influence) DESC, r.other_id
+          LIMIT $3`,
+        [citizenId, wid, NEIGHBOR_CANDIDATE_LIMIT]);
+      const candidates: NeighborSummary[] = nb.rows.map((x) => ({
+        id: x.id, name: x.name,
+        relationship: { trust: Number(x.trust), friendship: Number(x.friendship), influence: Number(x.influence) },
+        latestAction: x.latest_action ? (x.latest_action as ActionType) : undefined,
+        latestReasoning: clip(x.latest_reasoning),
+        topGoal: clip(x.top_goal), strongestBelief: clip(x.strongest_belief),
+        wealth: Number(x.wealth), reputation: Number(x.reputation),
+      }));
+      store.setNeighborCandidates(citizenId, candidates);
 
-    const og = await this.pool.query(
-      `SELECT o.id, o.name, o.kind, e.type AS latest_action, (e.payload->>'reasoning') AS latest_reasoning
-         FROM memberships m
-         JOIN organizations o ON o.id = m.org_id
-         LEFT JOIN LATERAL (SELECT type, payload FROM events
-            WHERE actor_id = o.id ORDER BY day DESC LIMIT 1) e ON true
-        WHERE m.citizen_id = $1
-        ORDER BY m.joined_day LIMIT 1`,
-      [citizenId]);
-    if (og.rows[0]) {
-      const o = og.rows[0];
-      const org: OrgContext = { id: o.id, name: o.name, kind: o.kind,
-        latestAction: o.latest_action ? (o.latest_action as ActionType) : undefined,
-        latestReasoning: clip(o.latest_reasoning) };
-      store.setOrgContext(citizenId, org);
+      const og = await this.pool.query(
+        `SELECT o.id, o.name, o.kind, e.type AS latest_action, (e.payload->>'reasoning') AS latest_reasoning
+           FROM memberships m
+           JOIN organizations o ON o.id = m.org_id
+           LEFT JOIN LATERAL (SELECT type, payload FROM events
+              WHERE actor_id = o.id ORDER BY day DESC LIMIT 1) e ON true
+          WHERE m.citizen_id = $1
+          ORDER BY m.joined_day LIMIT 1`,
+        [citizenId]);
+      if (og.rows[0]) {
+        const o = og.rows[0];
+        const org: OrgContext = { id: o.id, name: o.name, kind: o.kind,
+          latestAction: o.latest_action ? (o.latest_action as ActionType) : undefined,
+          latestReasoning: clip(o.latest_reasoning) };
+        store.setOrgContext(citizenId, org);
+      }
+    } catch (err) {
+      console.warn(`[loadContext] neighbor/org hydration failed for ${citizenId}, continuing memory-only:`, err);
     }
 
     return store;
