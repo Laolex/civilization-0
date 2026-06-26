@@ -804,3 +804,13 @@ Ran one real 0G tick against the LOCAL `civ0` DB via the worktree scheduler (iso
 - **Reproducibility (the verifiable-retrieval claim):** the archived `trust`, `influence`, `neighborText`, and `socialQuery` are sufficient to recompute `relationshipStrength = clamp((trust+influence)/200)` and `relevance = clamp(cosine(embed(neighborText), embed(socialQuery)))` end-to-end. Re-derived `blendedScore` for both neighbors → matches the stored rounded values. Retrieval is independently verifiable from the archived raw inputs alone.
 
 All acceptance criteria met.
+
+### Refreshed acceptance (post final-fix, supersedes the run above)
+
+After the final-review fix (`4d748df`) archived the RAW retrieval inputs, a fresh live 0G tick (Day 13, `ada` → `invest` → Marcus, `verified=true`, trace root `0xc7d7896474be73e672a016cba175b957566808911900a5420c49cde0db81f45a`, OG 0.004702) was verified by an **independent recomputation**: a verifier holding only the trace + the public 64-dim FNV embedder (inlined, no codebase import) recomputed `relationshipStrength=(trust+influence)/200` AND `relevance=clamp(cosine(embed(neighborText),embed(socialQuery)))` from the archived raw inputs:
+
+- `socialQuery`: "Raise a $500 k seed round within 60 days"
+- marcus — raw trust 65 / influence 70 / neighborText (pitch-deck/seed-round) → recomputed str **0.68**, rel **0.46** = stored ✅
+- lena — raw trust 80 / influence 55 / neighborText (MVP backend) → recomputed str **0.68**, rel **0.10** (floor) = stored ✅
+
+This makes the "verifiable retrieval" claim literally true: the scores are recomputable end-to-end from the trace, not merely a `strength × relevance` composition check.
