@@ -102,6 +102,9 @@ export interface ScoredNeighbor {
   relationshipStrength: number; // 0..1 (normalized from the 0..100 trust+influence)
   relevance: number;            // RELEVANCE_FLOOR..1
   blendedScore: number;         // relationshipStrength * relevance
+  /** The exact string fed to the embedder for relevance scoring — kept so a
+   *  third party can recompute relevance = clamp(cosine(embed(neighborText), embed(socialQuery))). */
+  neighborText: string;
 }
 
 export interface OrgContext {

@@ -32,5 +32,8 @@ describe("GraphRetriever.selectNeighbors", () => {
     expect(out).toHaveLength(2);
     expect(out.map((s) => s.summary.id)).toEqual(["a", "z"]); // equal score -> id asc
     expect(out[0].blendedScore).toBeGreaterThanOrEqual(out[1].blendedScore);
+    // neighborText must be present and contain the neighbor's name (verifiable retrieval)
+    expect(out[0].neighborText.length).toBeGreaterThan(0);
+    expect(out[0].neighborText).toContain(out[0].summary.name);
   });
 });

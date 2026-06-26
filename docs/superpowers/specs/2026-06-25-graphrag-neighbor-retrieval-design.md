@@ -84,21 +84,28 @@ Per candidate (`trust`/`friendship`/`influence` are stored on a **0..100** scale
 
 Today `drivers` records the *brain-weighted* memory/belief ids the brain leaned on (subset invariant: weight keys ⊆ retrieved ids), archived as the `civ.provenance/v0` trace on 0G Storage, keyless-verifiable.
 
-We add **`socialDrivers`** (retrieval-side, deterministic):
+We add **`socialDrivers`** (retrieval-side, deterministic) and **`socialQuery`**:
 
 ```
 drivers: {
   memories: [...], beliefs: [...],                 // unchanged
   socialDrivers: [                                  // NEW
-    // marcus->ada: trust 70, influence 60 -> strength (70+60)/200 = 0.65
+    // Raw inputs archived so scores are independently recomputable:
+    // relationshipStrength = clamp((trust+influence)/200)
+    // relevance = clamp(cosine(embed(neighborText), embed(socialQuery)))
     { id:"marcus", name:"Marcus",
+      trust:70, influence:60,                       // raw — recompute strength
+      neighborText:"Marcus invest backed Ada ...",  // raw — recompute relevance
       relationshipStrength:0.65, relevance:0.61, blendedScore:0.40 }, ...
+    // Note: relationshipStrength/relevance/blendedScore are r2-rounded display
+    // values; the recomputation matches within rounding.
   ],
+  socialQuery: "capital Boom",                      // NEW — decision query used for all relevance scores
   orgDriver?: { id, name, action?, reasoning? }     // NEW, if member
 }
 ```
 
-**The key win — verifiable retrieval, not just verifiable storage.** Because `GraphRetriever` is pure and deterministic over the archived inputs + the fixed 64-dim embedder, the `socialDrivers` scores can be **independently re-derived** by anyone holding the trace. "Verify, don't trust the operator" now extends from *storage* and *compute* to **retrieval itself** — a reviewer can recompute that Marcus scored 0.49 and confirm the social context wasn't fabricated.
+**The key win — verifiable retrieval, not just verifiable storage.** The trace archives the RAW retrieval inputs (`trust`, `influence`, `neighborText`, and `socialQuery`) alongside the rounded display scores. A third party holding only the trace and the fixed 64-dim embedder can recompute `relationshipStrength = clamp((trust+influence)/200)` and `relevance = clamp(cosine(embed(neighborText), embed(socialQuery)))` end-to-end, and confirm the stored `blendedScore` within rounding — without trusting the operator. "Verify, don't trust the operator" now extends from *storage* and *compute* to **retrieval itself**.
 
 **Schema safety:** `socialDrivers`/`orgDriver` are *additive*; the keyless verifier checks only `data.schema`, so the string stays `civ.provenance/v0` and old traces still verify. No verifier change.
 

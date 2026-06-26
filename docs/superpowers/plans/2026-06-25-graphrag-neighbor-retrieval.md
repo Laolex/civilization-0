@@ -796,10 +796,11 @@ Ran one real 0G tick against the LOCAL `civ0` DB via the worktree scheduler (iso
 - **Subject decision:** `ada` → `invest`, target `Marcus`, **`verified=true`** (0G Compute TEE). Reasoning cited Marcus (a retrieved neighbor).
 - **Trace root (keyless-verifiable):** `0xeb1782fcc30155be12407b32c4280e2456ff2e6f214c91004fdd5a2589d9eea9`, key `trace/mqv2ng73-4`, schema `civ.provenance/v0`.
 - **`socialDrivers` in the archived record:**
-  - `marcus` — relationshipStrength 0.68, relevance 0.46, blendedScore 0.31
+  - `marcus` — trust 70, influence 60 → relationshipStrength 0.68; neighborText "Marcus invest capital capital"; relevance 0.46; blendedScore 0.31
   - `lena` — relationshipStrength 0.68, relevance 0.10 (floor), blendedScore 0.07
+  - The trace also carries `socialQuery` (the decision query used for all relevance scores), enabling full end-to-end recomputation with the fixed 64-dim embedder.
   - Query-aware selection differentiated the two equal-strength ties by relevance (Marcus surfaced as most relevant; Lena hit the ε floor on low text overlap).
 - **`orgDriver`:** `ada-collective` (org context hydrated and recorded).
-- **Reproducibility (the verifiable-retrieval claim):** re-derived `relationshipStrength × relevance` from the trace for both neighbors → both MATCH the stored `blendedScore` exactly. Retrieval reasons are independently verifiable from the archived inputs.
+- **Reproducibility (the verifiable-retrieval claim):** the archived `trust`, `influence`, `neighborText`, and `socialQuery` are sufficient to recompute `relationshipStrength = clamp((trust+influence)/200)` and `relevance = clamp(cosine(embed(neighborText), embed(socialQuery)))` end-to-end. Re-derived `blendedScore` for both neighbors → matches the stored rounded values. Retrieval is independently verifiable from the archived raw inputs alone.
 
 All acceptance criteria met.

@@ -152,7 +152,8 @@ describe("buildMessages social context", () => {
       neighbors: [{
         summary: { id: "marcus", name: "Marcus", relationship: { trust: 70, friendship: 50, influence: 60 },
           latestAction: "invest", latestReasoning: "backed Ada", topGoal: "grow capital", wealth: 100000, reputation: 70 },
-        relationshipStrength: 0.65, relevance: 0.6, blendedScore: 0.39 }],
+        relationshipStrength: 0.65, relevance: 0.6, blendedScore: 0.39,
+        neighborText: "Marcus invest backed Ada grow capital" }],
       orgContext: { id: "o1", name: "Ada Collective", kind: "guild", latestAction: "partner", latestReasoning: "expand" },
     }))[1].content;
     expect(user).toContain("People around you");

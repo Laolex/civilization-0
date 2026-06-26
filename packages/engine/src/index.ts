@@ -19,7 +19,8 @@ export const MAJOR_ACTIONS: ActionType[] = [
 ];
 
 const RETRIEVE_K = 5;
-const NEIGHBOR_K = Number(process.env.NEIGHBOR_K ?? "3");
+const envNum = (v: string | undefined, d: number) => { const n = Number(v ?? d); return Number.isFinite(n) ? n : d; };
+const NEIGHBOR_K = envNum(process.env.NEIGHBOR_K, 3);
 const MEMORY_IMPORTANCE_THRESHOLD = 4;
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -111,7 +112,11 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
         id: n.summary.id, name: n.summary.name,
         relationshipStrength: r2(n.relationshipStrength),
         relevance: r2(n.relevance), blendedScore: r2(n.blendedScore),
+        trust: n.summary.relationship.trust,
+        influence: n.summary.relationship.influence,
+        neighborText: n.neighborText,
       })),
+      socialQuery: neighbors.length ? query : undefined,
       orgDriver: orgContext
         ? { id: orgContext.id, name: orgContext.name, action: orgContext.latestAction, reasoning: orgContext.latestReasoning }
         : undefined,

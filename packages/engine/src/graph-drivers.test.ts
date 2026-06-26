@@ -56,6 +56,12 @@ describe("engine social retrieval", () => {
     expect(rec.drivers.socialDrivers[0].id).toBe("marcus");
     expect(rec.drivers.socialDrivers[0].blendedScore).toBeGreaterThan(0);
     expect(rec.drivers.orgDriver.id).toBe("o1");
+    // raw retrieval inputs — needed for independent verifiability
+    expect(typeof rec.drivers.socialDrivers[0].trust).toBe("number");
+    expect(typeof rec.drivers.socialDrivers[0].influence).toBe("number");
+    expect(rec.drivers.socialDrivers[0].neighborText.length).toBeGreaterThan(0);
+    expect(typeof rec.drivers.socialQuery).toBe("string");
+    expect(rec.drivers.socialQuery.length).toBeGreaterThan(0);
   });
 
   it("degrades to empty socialDrivers when no graphRetriever is wired", async () => {

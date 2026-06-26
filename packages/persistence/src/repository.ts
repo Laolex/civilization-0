@@ -5,8 +5,9 @@ import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
 import { readWorldView, type WorldView } from "./read";
 
-const NEIGHBOR_CANDIDATE_LIMIT = Number(process.env.NEIGHBOR_CANDIDATE_LIMIT ?? "5");
-const NEIGHBOR_TEXT_MAX = Number(process.env.NEIGHBOR_TEXT_MAX ?? "200");
+const envNum = (v: string | undefined, d: number) => { const n = Number(v ?? d); return Number.isFinite(n) ? n : d; };
+const NEIGHBOR_CANDIDATE_LIMIT = envNum(process.env.NEIGHBOR_CANDIDATE_LIMIT, 5);
+const NEIGHBOR_TEXT_MAX = envNum(process.env.NEIGHBOR_TEXT_MAX, 200);
 const clip = (s: string | null | undefined, n = NEIGHBOR_TEXT_MAX): string | undefined =>
   s == null ? undefined : (s.length > n ? s.slice(0, n) : s);
 
