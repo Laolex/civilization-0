@@ -1,5 +1,5 @@
 import { InMemoryWorldStore } from "@civ/store";
-import { FakeEmbedder, MemoryIndex } from "@civ/memory";
+import { FakeEmbedder, MemoryIndex, GraphRetriever } from "@civ/memory";
 import { RuleBasedBeliefReviser } from "@civ/beliefs";
 import { FakeBrain } from "@civ/brain";
 import { FakeStorage } from "@civ/storage";
@@ -47,6 +47,7 @@ export function seedAdaWorld(): { deps: TickDeps; storage: FakeStorage } {
   const clock = { day: 3 };
   const deps: TickDeps = {
     store, embedder, memoryIndex: new MemoryIndex(store, embedder),
+    graphRetriever: new GraphRetriever(embedder),
     reviser: new RuleBasedBeliefReviser(), brain, storage,
     explain: new ExplainabilityService(storage),
     clock, idgen: () => `id${++n}`,

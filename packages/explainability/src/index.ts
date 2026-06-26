@@ -4,6 +4,8 @@ import type { StorageProvider } from "@civ/storage";
 export interface TraceDrivers {
   memories: { id: string; weight: number }[];
   beliefs: { id: string; weight: number }[];
+  socialDrivers?: { id: string; name: string; relationshipStrength: number; relevance: number; blendedScore: number }[];
+  orgDriver?: { id: string; name: string; action?: string; reasoning?: string };
 }
 
 export interface BuildTraceArgs {
