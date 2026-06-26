@@ -17,12 +17,24 @@ export async function GET(req: Request) {
   try {
     const bytes = await createZeroGDownloader(INDEXER).download(root);
     const rec = parseArchivedTrace(bytes);
-    const data = rec.data as { decision?: unknown; meta?: { verified?: unknown } };
+    const data = rec.data as {
+      decision?: unknown;
+      meta?: { verified?: unknown };
+      drivers?: { socialDrivers?: unknown; orgDriver?: unknown; socialQuery?: unknown };
+    };
     return NextResponse.json({
       ok: true,
       key: rec.key,
       bytes: bytes.length,
-      excerpt: { decision: data.decision, verified: data.meta?.verified ?? false },
+      excerpt: {
+        decision: data.decision,
+        verified: data.meta?.verified ?? false,
+        // GraphRAG: surface the graph-reasoned retrieval so it's inspectable
+        // without downloading the raw record. Empty/null for pre-GraphRAG traces.
+        socialQuery: data.drivers?.socialQuery ?? null,
+        socialDrivers: data.drivers?.socialDrivers ?? [],
+        orgDriver: data.drivers?.orgDriver ?? null,
+      },
     });
   } catch (err) {
     return NextResponse.json(
