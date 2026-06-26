@@ -20,6 +20,20 @@ export function buildMessages(ctx: DecisionContext): ChatMessage[] {
   const mems = ctx.memories.map((m) => `- [${m.id}] (importance ${m.importance}) ${m.summary}`).join("\n") || "- (none)";
   const beliefs = ctx.beliefs.map((b) => `- [${b.id}] ${b.statement} (confidence ${b.confidence})`).join("\n") || "- (none)";
   const rels = ctx.relationships.map((r) => `- ${r.otherId}: trust ${r.trust}, friendship ${r.friendship}`).join("\n") || "- (none)";
+  const people = (ctx.neighbors ?? []).map((n) => {
+    const s = n.summary;
+    const move = s.latestAction
+      ? `${s.latestAction}${s.latestReasoning ? ` (${s.latestReasoning})` : ""}`
+      : "no recent move";
+    const drive = s.topGoal ?? s.strongestBelief ?? "unknown drive";
+    return `- ${s.name}: trust ${s.relationship.trust}, influence ${s.relationship.influence}; recently ${move}; pursuing ${drive}; wealth ${s.wealth}, reputation ${s.reputation}`;
+  }).join("\n");
+  const org = ctx.orgContext
+    ? `Your organization ${ctx.orgContext.name} (${ctx.orgContext.kind})` +
+      (ctx.orgContext.latestAction
+        ? ` recently chose to ${ctx.orgContext.latestAction}${ctx.orgContext.latestReasoning ? `: ${ctx.orgContext.latestReasoning}` : ""}.`
+        : ".")
+    : "";
   const system = `You are ${ctx.citizen.name}, a ${ctx.citizen.occupation}. Decide what THIS person would actually do, in character — not the objectively optimal move.
 Allowed actions: ${ctx.availableActions.join(", ")}.
 ${SCHEMA}`;
@@ -32,7 +46,7 @@ Beliefs:
 ${beliefs}
 Relationships:
 ${rels}
-Choose ONE action and return the JSON.`;
+${people ? `People around you:\n${people}\n` : ""}${org ? `${org}\n` : ""}Choose ONE action and return the JSON.`;
   return [{ role: "system", content: system }, { role: "user", content: user }];
 }
 
