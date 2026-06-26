@@ -85,6 +85,25 @@ export interface Organization {
 }
 export interface Membership { orgId: string; citizenId: string; role: OrgRole; joinedDay: number; }
 
+export interface NeighborSummary {
+  id: string;
+  name: string;
+  relationship: { trust: number; friendship: number; influence: number };
+  latestAction?: ActionType;
+  latestReasoning?: string;
+  topGoal?: string;
+  strongestBelief?: string;
+  wealth: number;
+  reputation: number;
+}
+
+export interface ScoredNeighbor {
+  summary: NeighborSummary;
+  relationshipStrength: number; // 0..1 (normalized from the 0..100 trust+influence)
+  relevance: number;            // RELEVANCE_FLOOR..1
+  blendedScore: number;         // relationshipStrength * relevance
+}
+
 export interface WorldState {
   day: number; economy: Record<string, number>; headline: string;
 }
