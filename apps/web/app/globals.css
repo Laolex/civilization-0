@@ -2752,3 +2752,7 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .sd-raw-grid { margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .sd-raw-key { color: var(--fg); font-size: 11px; }
 .sd-raw-val { color: var(--muted); font-size: 11px; }
+
+/* Verify page — social drivers layer */
+.verify-social { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.verify-social-head { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
