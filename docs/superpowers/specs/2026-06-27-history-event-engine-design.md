@@ -20,8 +20,9 @@ The civilization is the stress test. The product is the substrate: an append-onl
 - **Invariant #1 — Authenticated cognition only.** Civ-0 records only authenticated cognition. If a cognitive artifact was not explicitly produced by the executing runtime, it MUST NOT be reconstructed, inferred, estimated, or presented as historical fact. Unknown cognition remains unknown (`null`), and surfaces in the UI as "unavailable" — never a fabricated value.
 - **Invariant #2 — Mutation ⇔ history (bidirectional).** Every committed world mutation MUST have a corresponding authenticated *world-mutating* history event (a `CognitiveTransition`), and every world-mutating history event MUST correspond to a committed world mutation. Both are written in the same DB transaction; neither may exist without the other. No orphan mutations, no orphan cognition. (System events such as `Anchor` are not world mutations: they are exempt from the ⇔ but still bound by Invariant #3.)
 - **Invariant #3 — Append-only.** History is append-only. No historical event may be modified, deleted, reordered, or recomputed. Corrections are represented only as new events.
+- **Invariant #4 — Schema permanence.** Historical events are interpreted according to the `schemaVersion` recorded at the time of emission. Schema evolution MUST preserve the ability to reconstruct historical meaning without reinterpretation — a 2026 `CognitiveTransition v1` is always read with v1 semantics, never silently re-read under a later schema. This is why `schemaVersion` lives in the header and why readers dispatch on it.
 
-These three invariants are the spec. Everything below serves them.
+These four invariants are the spec. Everything below serves them.
 
 ## Phase 1A acceptance test (the only definition of "done")
 
@@ -32,6 +33,15 @@ Concretely:
 civ explain --citizen <id> --tick <day>
 ```
 returns an authenticated, replayable cognitive trace — folded from the history log, hash-chain verified, 0G-anchored — while the live scheduler tick behaves byte-for-byte as before.
+
+### Phase 1A failure conditions (scope guard — any one means 1A is not done)
+Phase 1A **fails** if:
+- `fold(history)` diverges from legacy state (Faithfulness Proof broken),
+- a committed world mutation exists without a corresponding history event,
+- a world-mutating history event exists without a committed mutation,
+- replay requires *recomputation* of cognition (rather than reconstruction of recorded cognition),
+- any cognitive field is *inferred* rather than recorded (Invariant #1 breach),
+- live civilization behavior changes in any observable way.
 
 ## Scope
 
@@ -179,10 +189,14 @@ persistTick TX {
 If the append fails, the whole tick rolls back (no decision without its transition; no transition without its decision). This reuses the engine's existing "event only after its causal decision" discipline.
 
 ### Hash chain (Invariant #3 enforcement)
-Per-world chain. `eventHash = sha256(canonicalJSON(header) ‖ canonicalJSON(payload))`; `parentHash` = the previous event's `event_hash` for that `world_id` (genesis parent = `0x0…`). `append` reads the world's current tip inside the transaction and links to it. Any modification/deletion/reordering breaks the chain and is detectable by re-walking it.
+Per-world chain. `eventHash = sha256(canon(header) ‖ canon(payload))`; `parentHash` = the previous event's `event_hash` for that `world_id` (genesis parent = `0x0…`). `append` reads the world's current tip inside the transaction and links to it. Any modification/deletion/reordering breaks the chain and is detectable by re-walking it.
+
+**Canonicalization (normative).** `canon()` MUST be deterministic, language-independent, and versioned — so a hash computed by today's TypeScript runtime is byte-identical to one computed by any future runtime (Rust, a zkVM guest, an external auditor). Phase 1A uses **JSON Canonicalization Scheme (JCS, RFC 8785)**; the canonicalization version is pinned alongside `schemaVersion` (and may be carried explicitly as `canonVersion` if it ever diverges from the schema). Never hash a language-default `JSON.stringify` — key ordering and number formatting are not stable across runtimes, and a non-canonical hash silently breaks replay years later.
 
 ### Anchor to 0G
 Per tick: collect the tick's `CognitiveTransition` hashes → merkle root → archive a `civ.history/v0` record to **0G Storage** (reuses `createZeroGStorage` / the existing archival seam) → append an `AnchorEvent` + a `history_anchors` row with `{merkleRoot, zgRootHash, zgTxHash}`. Anchoring runs *after* the transactional append (best-effort; a missed anchor leaves the chain intact and re-anchorable — the chain is the integrity spine, the anchor is the external timestamp). Legacy per-decision trace archival is untouched.
+
+**Build-order note (for the implementation plan):** anchoring is an *optimization / external-timestamp* layer, **not** a correctness layer. The correctness spine — types → canonical hash → append → chain verification → reduce → projection → shadow verification → `civ explain` — MUST be built and passing *before* 0G anchoring is added. The web explorer view comes after `civ explain`. Do not let anchoring (or any 0G dependency) gate the correctness tracks.
 
 ### Fold + projections (split, per Amendment #5)
 ```
