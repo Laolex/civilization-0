@@ -43,12 +43,24 @@ export interface Belief {
   sourceMemoryIds: string[]; updatedDay: number;
 }
 
+export interface SocialDriver {
+  id: string; name: string;
+  relationshipStrength: number; relevance: number; blendedScore: number;
+  trust: number; influence: number; neighborText: string;
+}
+export interface OrgDriver { id: string; name: string; action?: string; reasoning?: string; }
+
 export interface ExecutionMeta {
   provider: string;
   model: string;
   requestId?: string;
   verified?: boolean;
   verification?: unknown;
+  /** GraphRAG: the neighbors whose trust×relevance drove this decision (mirror of the
+   *  0G trace's drivers.socialDrivers, so the UI renders without a 0G round-trip). */
+  socialDrivers?: SocialDriver[];
+  socialQuery?: string;
+  orgDriver?: OrgDriver;
 }
 
 export interface Decision {

@@ -66,6 +66,21 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
     : [];
   const orgContext = store.getOrgContext(citizenId);
 
+  // GraphRAG drivers, computed once and written to BOTH decision.meta (fast UI mirror)
+  // and the 0G trace (canonical, verifiable copy).
+  const socialDrivers = neighbors.map((n) => ({
+    id: n.summary.id, name: n.summary.name,
+    relationshipStrength: r2(n.relationshipStrength),
+    relevance: r2(n.relevance), blendedScore: r2(n.blendedScore),
+    trust: n.summary.relationship.trust,
+    influence: n.summary.relationship.influence,
+    neighborText: n.neighborText,
+  }));
+  const orgDriver = orgContext
+    ? { id: orgContext.id, name: orgContext.name, action: orgContext.latestAction, reasoning: orgContext.latestReasoning }
+    : undefined;
+  const socialQuery = neighbors.length ? query : undefined;
+
   // 3-4. Build context + decide. A queued dilemma narrows the choice set for
   // this one tick; the brain honors it at both the prompt and the parse layer.
   const forced = store.getForcedActions(citizenId);
@@ -85,7 +100,8 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   const decision: Decision = {
     id: decisionId, citizenId, goalId: goal?.id ?? null, day: clock.day,
     reasoning: result.reasoning, action: result.action, targetId: result.targetId,
-    brainProvider: brain.name, brainModel: brain.model, meta: result.meta,
+    brainProvider: brain.name, brainModel: brain.model,
+    meta: { ...result.meta, ...(socialDrivers.length ? { socialDrivers, socialQuery } : {}), ...(orgDriver ? { orgDriver } : {}) },
   };
   store.addDecision(decision);
 
@@ -108,18 +124,9 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
     drivers: {
       memories: dm.map((d) => ({ id: d.memoryId, weight: d.weight })),
       beliefs: db.map((d) => ({ id: d.beliefId, weight: d.weight })),
-      socialDrivers: neighbors.map((n) => ({
-        id: n.summary.id, name: n.summary.name,
-        relationshipStrength: r2(n.relationshipStrength),
-        relevance: r2(n.relevance), blendedScore: r2(n.blendedScore),
-        trust: n.summary.relationship.trust,
-        influence: n.summary.relationship.influence,
-        neighborText: n.neighborText,
-      })),
-      socialQuery: neighbors.length ? query : undefined,
-      orgDriver: orgContext
-        ? { id: orgContext.id, name: orgContext.name, action: orgContext.latestAction, reasoning: orgContext.latestReasoning }
-        : undefined,
+      socialDrivers,
+      socialQuery,
+      orgDriver,
     },
   });
   store.addTrace(trace);

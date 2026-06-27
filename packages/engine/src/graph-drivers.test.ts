@@ -64,6 +64,22 @@ describe("engine social retrieval", () => {
     expect(rec.drivers.socialQuery.length).toBeGreaterThan(0);
   });
 
+  it("mirrors socialDrivers into decision.meta for the UI", async () => {
+    const { deps } = setup();
+    const result = await runCitizenTick(deps, "ada");
+    const drivers = result.decision.meta?.socialDrivers;
+    expect(Array.isArray(drivers)).toBe(true);
+    expect(drivers!.length).toBeGreaterThan(0);
+    const d = drivers![0];
+    expect(d).toMatchObject({
+      id: expect.any(String), name: expect.any(String),
+      relationshipStrength: expect.any(Number), relevance: expect.any(Number),
+      blendedScore: expect.any(Number), trust: expect.any(Number),
+      influence: expect.any(Number), neighborText: expect.any(String),
+    });
+    expect(result.decision.meta?.socialQuery).toEqual(expect.any(String));
+  });
+
   it("degrades to empty socialDrivers when no graphRetriever is wired", async () => {
     const { deps, storage } = setup();
     const r = await runCitizenTick({ ...deps, graphRetriever: undefined }, "ada");
