@@ -1,4 +1,4 @@
-import type { ActionType, Belief, Citizen, ExecutionMeta, Goal, Memory, Relationship, WorldState } from "@civ/shared";
+import type { ActionType, Belief, Citizen, ExecutionMeta, Goal, Memory, Relationship, WorldState, ScoredNeighbor, OrgContext } from "@civ/shared";
 
 export interface DecisionContext {
   citizen: Citizen;
@@ -8,6 +8,8 @@ export interface DecisionContext {
   relationships: Relationship[];
   worldState: WorldState;
   availableActions: ActionType[];
+  neighbors?: ScoredNeighbor[];
+  orgContext?: OrgContext | null;
 }
 
 export interface DecisionResult {

@@ -36,3 +36,5 @@ export class MemoryIndex {
       .map((x) => x.m);
   }
 }
+
+export { GraphRetriever } from "./graph-retriever";

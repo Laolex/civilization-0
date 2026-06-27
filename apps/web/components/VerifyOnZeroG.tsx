@@ -1,11 +1,13 @@
 "use client";
 // apps/web/components/VerifyOnZeroG.tsx — live /api/verify integration
 import { useState } from "react";
+import { SocialDrivers } from "./SocialDrivers";
+import type { SocialDriverView, OrgDriverView } from "../lib/types";
 
 type State =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ok"; key: string; bytes: number; excerpt: { decision: unknown; verified: unknown } }
+  | { status: "ok"; key: string; bytes: number; excerpt: { decision: unknown; verified: unknown; socialQuery?: string | null; socialDrivers?: SocialDriverView[]; orgDriver?: OrgDriverView | null } }
   | { status: "error"; error: string };
 
 export function VerifyOnZeroG({ rootHash }: { rootHash: string }) {
@@ -23,7 +25,7 @@ export function VerifyOnZeroG({ rootHash }: { rootHash: string }) {
         ok: boolean;
         key?: string;
         bytes?: number;
-        excerpt?: { decision: unknown; verified: unknown };
+        excerpt?: { decision: unknown; verified: unknown; socialQuery?: string | null; socialDrivers?: SocialDriverView[]; orgDriver?: OrgDriverView | null };
         error?: string;
       };
       if (!j.ok || !j.key || !j.excerpt) {
@@ -66,6 +68,16 @@ export function VerifyOnZeroG({ rootHash }: { rootHash: string }) {
           <pre className="verify-pre">
             {JSON.stringify(s.excerpt, null, 2)}
           </pre>
+          {Array.isArray(s.excerpt.socialDrivers) && s.excerpt.socialDrivers.length > 0 && (
+            <div className="verify-social">
+              <div className="verify-social-head mono">social context · graph-reasoned</div>
+              <SocialDrivers
+                drivers={s.excerpt.socialDrivers}
+                socialQuery={s.excerpt.socialQuery ?? undefined}
+                orgDriver={s.excerpt.orgDriver ?? undefined}
+              />
+            </div>
+          )}
         </div>
       )}
 

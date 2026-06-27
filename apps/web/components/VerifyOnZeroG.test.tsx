@@ -5,6 +5,7 @@ import { VerifyOnZeroG } from "./VerifyOnZeroG";
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("VerifyOnZeroG — render smoke", () => {
@@ -69,5 +70,39 @@ describe("VerifyOnZeroG — render smoke", () => {
     await waitFor(() =>
       expect(screen.getByText(/Could not reach 0G Storage/)).toBeDefined(),
     );
+  });
+
+  it("shows social drivers after successful fetch with socialDrivers", async () => {
+    const excerpt = {
+      decision: { action: "invest", targetId: "marcus" },
+      verified: true,
+      socialQuery: "who do I trust on risk?",
+      socialDrivers: [
+        {
+          id: "marcus",
+          name: "Marcus Vale",
+          relationshipStrength: 0.68,
+          relevance: 0.46,
+          blendedScore: 0.31,
+          trust: 71,
+          influence: 65,
+          neighborText: "steady",
+        },
+      ],
+      orgDriver: null,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          json: () =>
+            Promise.resolve({ ok: true, key: "k", bytes: 100, excerpt }),
+        }),
+      ),
+    );
+
+    render(<VerifyOnZeroG rootHash="0xabc123" />);
+    fireEvent.click(screen.getByRole("button", { name: /verify on 0g/i }));
+    expect(await screen.findByText("Marcus Vale")).toBeDefined();
   });
 });

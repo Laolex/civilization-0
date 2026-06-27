@@ -27,7 +27,7 @@ export default async function MapPage() {
         <div className="board-live">
           <LiveDot />
           <span className="board-live-label mono">LIVE on 0G</span>
-          <span className="board-live-cadence">hover a citizen to light up their web · click to open a story</span>
+          <span className="board-live-cadence">hover a citizen to light up their web · click to replay the decision and see which ties pulled it</span>
         </div>
         <h1 className="board-title">Every world. Every citizen. Alive.</h1>
         <p className="board-sub">
@@ -37,8 +37,7 @@ export default async function MapPage() {
           causal chain — reasoned and archived on 0G — that got it there.
         </p>
         <p className="map-exhibit">
-          This is the <span className="ink">provenance layer for autonomous AI</span>, running live.
-          The civilization is <strong>Exhibit A</strong> — the evidence the layer works, not the product.{" "}
+          the provenance layer for autonomous AI — watch citizens reason over the social graph, live on 0G. click any citizen to replay the decision and see which ties pulled it.{" "}
           <Link href="/build" className="map-exhibit-link">See how it wraps any agent →</Link>
         </p>
       </header>

@@ -128,3 +128,37 @@ describe("ZeroGComputeBrain prompt builder injection", () => {
     expect(seen[0].content).toContain("start_company"); // signature of the default builder
   });
 });
+
+function ctxWith(extra: Partial<DecisionContext>): DecisionContext {
+  return {
+    citizen: { id: "ada", name: "Ada", occupation: "Engineer", age: 29,
+      traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
+      wealth: 0, reputation: 50, tier: 3, createdDay: 0 },
+    goal: null, memories: [], beliefs: [], relationships: [],
+    worldState: { day: 3, economy: {}, headline: "Recession" },
+    availableActions: ["work", "partner"], ...extra,
+  };
+}
+
+describe("buildMessages social context", () => {
+  it("omits the People/Org blocks when none are present", () => {
+    const user = buildMessages(ctxWith({}))[1].content;
+    expect(user).not.toContain("People around you");
+    expect(user).not.toContain("Your organization");
+  });
+
+  it("renders neighbors and org when present", () => {
+    const user = buildMessages(ctxWith({
+      neighbors: [{
+        summary: { id: "marcus", name: "Marcus", relationship: { trust: 70, friendship: 50, influence: 60 },
+          latestAction: "invest", latestReasoning: "backed Ada", topGoal: "grow capital", wealth: 100000, reputation: 70 },
+        relationshipStrength: 0.65, relevance: 0.6, blendedScore: 0.39,
+        neighborText: "Marcus invest backed Ada grow capital" }],
+      orgContext: { id: "o1", name: "Ada Collective", kind: "guild", latestAction: "partner", latestReasoning: "expand" },
+    }))[1].content;
+    expect(user).toContain("People around you");
+    expect(user).toContain("Marcus");
+    expect(user).toContain("invest");
+    expect(user).toContain("Your organization Ada Collective");
+  });
+});

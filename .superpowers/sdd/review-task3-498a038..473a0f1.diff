@@ -1,0 +1,141 @@
+# Review package: 498a038..473a0f1
+
+## Commits
+473a0f1 feat(graphrag): brain DecisionContext neighbors/org + prompt social block
+
+## Files changed
+ packages/brain/src/index.ts      |  4 +++-
+ packages/zerog/src/brain.test.ts | 33 +++++++++++++++++++++++++++++++++
+ packages/zerog/src/brain.ts      | 16 +++++++++++++++-
+ 3 files changed, 51 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/packages/brain/src/index.ts b/packages/brain/src/index.ts
+index fd2cd99..30de008 100644
+--- a/packages/brain/src/index.ts
++++ b/packages/brain/src/index.ts
+@@ -1,20 +1,22 @@
+-import type { ActionType, Belief, Citizen, ExecutionMeta, Goal, Memory, Relationship, WorldState } from "@civ/shared";
++import type { ActionType, Belief, Citizen, ExecutionMeta, Goal, Memory, Relationship, WorldState, ScoredNeighbor, OrgContext } from "@civ/shared";
+ 
+ export interface DecisionContext {
+   citizen: Citizen;
+   goal: Goal | null;
+   memories: Memory[];
+   beliefs: Belief[];
+   relationships: Relationship[];
+   worldState: WorldState;
+   availableActions: ActionType[];
++  neighbors?: ScoredNeighbor[];
++  orgContext?: OrgContext | null;
+ }
+ 
+ export interface DecisionResult {
+   action: ActionType;
+   targetId: string | null;
+   reasoning: string;
+   memoryWeights: Record<string, number>;
+   beliefWeights: Record<string, number>;
+   meta?: ExecutionMeta;
+ }
+diff --git a/packages/zerog/src/brain.test.ts b/packages/zerog/src/brain.test.ts
+index 58a2c8a..0ebc01e 100644
+--- a/packages/zerog/src/brain.test.ts
++++ b/packages/zerog/src/brain.test.ts
+@@ -121,10 +121,43 @@ describe("ZeroGComputeBrain prompt builder injection", () => {
+     const chat: Chat = {
+       complete: async (messages) => {
+         seen = messages;
+         return { content: '{"action":"work"}', provider: "0xprov", model: "llama-x", verified: true };
+       },
+     };
+     await new ZeroGComputeBrain(chat, "llama-x").decide(ctxOf());
+     expect(seen[0].content).toContain("start_company"); // signature of the default builder
+   });
+ });
++
++function ctxWith(extra: Partial<DecisionContext>): DecisionContext {
++  return {
++    citizen: { id: "ada", name: "Ada", occupation: "Engineer", age: 29,
++      traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
++      wealth: 0, reputation: 50, tier: 3, createdDay: 0 },
++    goal: null, memories: [], beliefs: [], relationships: [],
++    worldState: { day: 3, economy: {}, headline: "Recession" },
++    availableActions: ["work", "partner"], ...extra,
++  };
++}
++
++describe("buildMessages social context", () => {
++  it("omits the People/Org blocks when none are present", () => {
++    const user = buildMessages(ctxWith({}))[1].content;
++    expect(user).not.toContain("People around you");
++    expect(user).not.toContain("Your organization");
++  });
++
++  it("renders neighbors and org when present", () => {
++    const user = buildMessages(ctxWith({
++      neighbors: [{
++        summary: { id: "marcus", name: "Marcus", relationship: { trust: 70, friendship: 50, influence: 60 },
++          latestAction: "invest", latestReasoning: "backed Ada", topGoal: "grow capital", wealth: 100000, reputation: 70 },
++        relationshipStrength: 0.65, relevance: 0.6, blendedScore: 0.39 }],
++      orgContext: { id: "o1", name: "Ada Collective", kind: "guild", latestAction: "partner", latestReasoning: "expand" },
++    }))[1].content;
++    expect(user).toContain("People around you");
++    expect(user).toContain("Marcus");
++    expect(user).toContain("invest");
++    expect(user).toContain("Your organization Ada Collective");
++  });
++});
+diff --git a/packages/zerog/src/brain.ts b/packages/zerog/src/brain.ts
+index 9656d0b..67d4c58 100644
+--- a/packages/zerog/src/brain.ts
++++ b/packages/zerog/src/brain.ts
+@@ -13,33 +13,47 @@ export interface Chat { complete(messages: ChatMessage[]): Promise<ChatResult>;
+ const SCHEMA = `Return ONLY a JSON object, no prose, no markdown fences:
+ {"action": <one of the allowed actions>, "targetId": <citizen id or null>, "reasoning": <short string>,
+  "memoryWeights": {<memory id>: <0..1>}, "beliefWeights": {<belief id>: <0..1>}}
+ Only weight memory/belief ids that appear in the lists below.`;
+ 
+ export function buildMessages(ctx: DecisionContext): ChatMessage[] {
+   const traits = Object.entries(ctx.citizen.traits).map(([k, v]) => `${k} ${v}`).join(", ");
+   const mems = ctx.memories.map((m) => `- [${m.id}] (importance ${m.importance}) ${m.summary}`).join("\n") || "- (none)";
+   const beliefs = ctx.beliefs.map((b) => `- [${b.id}] ${b.statement} (confidence ${b.confidence})`).join("\n") || "- (none)";
+   const rels = ctx.relationships.map((r) => `- ${r.otherId}: trust ${r.trust}, friendship ${r.friendship}`).join("\n") || "- (none)";
++  const people = (ctx.neighbors ?? []).map((n) => {
++    const s = n.summary;
++    const move = s.latestAction
++      ? `${s.latestAction}${s.latestReasoning ? ` (${s.latestReasoning})` : ""}`
++      : "no recent move";
++    const drive = s.topGoal ?? s.strongestBelief ?? "unknown drive";
++    return `- ${s.name}: trust ${s.relationship.trust}, influence ${s.relationship.influence}; recently ${move}; pursuing ${drive}; wealth ${s.wealth}, reputation ${s.reputation}`;
++  }).join("\n");
++  const org = ctx.orgContext
++    ? `Your organization ${ctx.orgContext.name} (${ctx.orgContext.kind})` +
++      (ctx.orgContext.latestAction
++        ? ` recently chose to ${ctx.orgContext.latestAction}${ctx.orgContext.latestReasoning ? `: ${ctx.orgContext.latestReasoning}` : ""}.`
++        : ".")
++    : "";
+   const system = `You are ${ctx.citizen.name}, a ${ctx.citizen.occupation}. Decide what THIS person would actually do, in character — not the objectively optimal move.
+ Allowed actions: ${ctx.availableActions.join(", ")}.
+ ${SCHEMA}`;
+   const user = `Identity: ${ctx.citizen.name}, age ${ctx.citizen.age}. Traits: ${traits}.
+ Goal: ${ctx.goal?.description ?? "(none)"}.
+ World: day ${ctx.worldState.day}. ${ctx.worldState.headline}.
+ Relevant memories:
+ ${mems}
+ Beliefs:
+ ${beliefs}
+ Relationships:
+ ${rels}
+-Choose ONE action and return the JSON.`;
++${people ? `People around you:\n${people}\n` : ""}${org ? `${org}\n` : ""}Choose ONE action and return the JSON.`;
+   return [{ role: "system", content: system }, { role: "user", content: user }];
+ }
+ 
+ function extractJson(content: string): Record<string, unknown> | null {
+   const cleaned = content.replace(/```(?:json)?/gi, "").trim();
+   const tryParse = (s: string): Record<string, unknown> | null => {
+     try { const v = JSON.parse(s); return v && typeof v === "object" ? (v as Record<string, unknown>) : null; }
+     catch { return null; }
+   };
+   const direct = tryParse(cleaned);

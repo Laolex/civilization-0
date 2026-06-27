@@ -68,7 +68,12 @@ export default async function CitizenPage({ params }: { params: { id: string } }
     name: citizen.name, occupation: citizen.occupation,
     events: ownEvents.map((e) => ({ day: e.day, type: e.type, targetId: e.targetId, reasoning: e.reasoning })),
   });
-  const chain = chainRaw ? toCausalChain(chainRaw) : null;
+  const chain = chainRaw ? toCausalChain({
+    ...chainRaw,
+    socialDrivers: chainRaw.socialDrivers,
+    socialQuery: chainRaw.socialQuery ?? undefined,
+    orgDriver: chainRaw.orgDriver ?? undefined,
+  }) : null;
 
   return (
     <main className="board">

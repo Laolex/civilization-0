@@ -1,5 +1,6 @@
 import type { WorldSnapshot, WorldEvent } from "@civ/shared";
 import type { CausalChainView, ChainNode, TimelineEntry } from "./types";
+import { socialNode } from "./citizen-db";
 
 export function getCitizen(s: WorldSnapshot, id: string) {
   return s.citizens.find((c) => c.id === id);
@@ -41,6 +42,8 @@ export function getCausalChain(s: WorldSnapshot, decisionId: string): CausalChai
     if (b) nodes.push({ kind: "belief", title: `Belief ${b.id}`, weight: db.weight, detail: { statement: b.statement, weight: db.weight.toFixed(2), confidence: b.confidence.toFixed(2) } });
   }
   const meta = decision.meta;
+  const social = socialNode(meta?.socialDrivers, meta?.socialQuery, meta?.orgDriver);
+  if (social) nodes.push(social);
   nodes.push({ kind: "compute", title: "0G Compute", detail: { provider: meta?.provider ?? decision.brainProvider, model: meta?.model ?? decision.brainModel, verified: String(meta?.verified ?? false) } });
   nodes.push({ kind: "decision", title: "Decision", detail: { action: decision.action, target: decision.targetId ?? "—", reasoning: decision.reasoning } });
   nodes.push({ kind: "event", title: "Event", detail: { label: event ? eventLabel(s, event) : "—", day: event ? String(event.day) : "—" } });

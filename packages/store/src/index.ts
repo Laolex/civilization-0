@@ -1,6 +1,6 @@
 import type {
   ActionType, Belief, Citizen, Decision, DecisionBelief, DecisionMemory, DecisionTrace,
-  Goal, Memory, Relationship, WorldEvent, WorldState, WorldSnapshot,
+  Goal, Memory, NeighborSummary, OrgContext, Relationship, WorldEvent, WorldState, WorldSnapshot,
 } from "@civ/shared";
 
 export interface WorldStore {
@@ -32,6 +32,10 @@ export interface WorldStore {
   updateTraceArchive(id: string, rootHash: string, txHash: string): void;
   getWorldState(): WorldState;
   setWorldState(w: WorldState): void;
+  getNeighborCandidates(citizenId: string): NeighborSummary[];
+  setNeighborCandidates(citizenId: string, candidates: NeighborSummary[]): void;
+  getOrgContext(citizenId: string): OrgContext | null;
+  setOrgContext(citizenId: string, org: OrgContext | null): void;
   snapshot(): WorldSnapshot;
 }
 
@@ -48,6 +52,8 @@ export class InMemoryWorldStore implements WorldStore {
   private traces: DecisionTrace[] = [];
   private world: WorldState = { day: 0, economy: {}, headline: "" };
   private forcedActions = new Map<string, ActionType[]>();
+  private neighborCandidates = new Map<string, NeighborSummary[]>();
+  private orgContexts = new Map<string, OrgContext>();
 
   getCitizen(id: string) { return this.citizens.get(id); }
   upsertCitizen(c: Citizen) { this.citizens.set(c.id, c); }
@@ -94,6 +100,12 @@ export class InMemoryWorldStore implements WorldStore {
   }
   getWorldState() { return this.world; }
   setWorldState(w: WorldState) { this.world = w; }
+  getNeighborCandidates(citizenId: string) { return this.neighborCandidates.get(citizenId) ?? []; }
+  setNeighborCandidates(citizenId: string, candidates: NeighborSummary[]) { this.neighborCandidates.set(citizenId, candidates); }
+  getOrgContext(citizenId: string) { return this.orgContexts.get(citizenId) ?? null; }
+  setOrgContext(citizenId: string, org: OrgContext | null) {
+    if (org === null) this.orgContexts.delete(citizenId); else this.orgContexts.set(citizenId, org);
+  }
   snapshot(): WorldSnapshot {
     return {
       capturedAt: new Date().toISOString(),

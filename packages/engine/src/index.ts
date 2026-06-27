@@ -3,7 +3,7 @@ import {
   type DecisionMemory, type DecisionTrace, type Memory, type WorldEvent,
 } from "@civ/shared";
 import type { WorldStore } from "@civ/store";
-import { type Embedder, MemoryIndex } from "@civ/memory";
+import { type Embedder, MemoryIndex, GraphRetriever } from "@civ/memory";
 import type { BeliefReviser } from "@civ/beliefs";
 import type { BrainProvider } from "@civ/brain";
 import type { StorageProvider } from "@civ/storage";
@@ -19,12 +19,16 @@ export const MAJOR_ACTIONS: ActionType[] = [
 ];
 
 const RETRIEVE_K = 5;
+const envNum = (v: string | undefined, d: number) => { const n = Number(v ?? d); return Number.isFinite(n) ? n : d; };
+const NEIGHBOR_K = envNum(process.env.NEIGHBOR_K, 3);
 const MEMORY_IMPORTANCE_THRESHOLD = 4;
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export interface TickDeps {
   store: WorldStore;
   embedder: Embedder;
   memoryIndex: MemoryIndex;
+  graphRetriever?: GraphRetriever;
   reviser: BeliefReviser;
   brain: BrainProvider;
   storage: StorageProvider;
@@ -43,7 +47,7 @@ export interface TickResult {
 }
 
 export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise<TickResult> {
-  const { store, embedder, memoryIndex, reviser, brain, storage, explain, clock, idgen } = deps;
+  const { store, embedder, memoryIndex, graphRetriever, reviser, brain, storage, explain, clock, idgen } = deps;
 
   const citizen = store.getCitizen(citizenId);
   if (!citizen) throw new Error(`unknown citizen ${citizenId}`);
@@ -57,12 +61,32 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   const memories = dedupeById([...pinned, ...retrieved]);
   const beliefs = store.getBeliefs(citizenId);
   const relationships = store.getRelationships(citizenId);
+  const neighbors = graphRetriever
+    ? graphRetriever.selectNeighbors(store.getNeighborCandidates(citizenId), query, NEIGHBOR_K)
+    : [];
+  const orgContext = store.getOrgContext(citizenId);
+
+  // GraphRAG drivers, computed once and written to BOTH decision.meta (fast UI mirror)
+  // and the 0G trace (canonical, verifiable copy).
+  const socialDrivers = neighbors.map((n) => ({
+    id: n.summary.id, name: n.summary.name,
+    relationshipStrength: r2(n.relationshipStrength),
+    relevance: r2(n.relevance), blendedScore: r2(n.blendedScore),
+    trust: n.summary.relationship.trust,
+    influence: n.summary.relationship.influence,
+    neighborText: n.neighborText,
+  }));
+  const orgDriver = orgContext
+    ? { id: orgContext.id, name: orgContext.name, action: orgContext.latestAction, reasoning: orgContext.latestReasoning }
+    : undefined;
+  const socialQuery = neighbors.length ? query : undefined;
 
   // 3-4. Build context + decide. A queued dilemma narrows the choice set for
   // this one tick; the brain honors it at both the prompt and the parse layer.
   const forced = store.getForcedActions(citizenId);
   const result = await brain.decide({
-    citizen, goal, memories, beliefs, relationships, worldState, availableActions: forced ?? ALL_ACTIONS,
+    citizen, goal, memories, beliefs, relationships, worldState,
+    availableActions: forced ?? ALL_ACTIONS, neighbors, orgContext,
   });
 
   // 5. Build the event (written to the store after its causal decision, below).
@@ -76,7 +100,8 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   const decision: Decision = {
     id: decisionId, citizenId, goalId: goal?.id ?? null, day: clock.day,
     reasoning: result.reasoning, action: result.action, targetId: result.targetId,
-    brainProvider: brain.name, brainModel: brain.model, meta: result.meta,
+    brainProvider: brain.name, brainModel: brain.model,
+    meta: { ...result.meta, ...(socialDrivers.length ? { socialDrivers, socialQuery } : {}), ...(orgDriver ? { orgDriver } : {}) },
   };
   store.addDecision(decision);
 
@@ -99,6 +124,9 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
     drivers: {
       memories: dm.map((d) => ({ id: d.memoryId, weight: d.weight })),
       beliefs: db.map((d) => ({ id: d.beliefId, weight: d.weight })),
+      socialDrivers,
+      socialQuery,
+      orgDriver,
     },
   });
   store.addTrace(trace);

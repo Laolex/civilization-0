@@ -3,7 +3,7 @@ import { createZeroGStorage } from "@civ/zerog/src/real-uploader";
 import { createZeroGComputeBrain } from "@civ/zerog/src/real-chat";
 import { getBalanceOG, getWalletAddress } from "@civ/zerog/src/wallet";
 import { WorldRepository, getPool, closePool } from "@civ/persistence";
-import { FakeEmbedder, MemoryIndex } from "@civ/memory";
+import { FakeEmbedder, MemoryIndex, GraphRetriever } from "@civ/memory";
 import { RuleBasedBeliefReviser } from "@civ/beliefs";
 import { ExplainabilityService } from "@civ/explainability";
 import type { TickDeps } from "@civ/engine";
@@ -40,6 +40,7 @@ async function main() {
     store,
     embedder,
     memoryIndex: new MemoryIndex(store, embedder),
+    graphRetriever: new GraphRetriever(embedder),
     reviser: new RuleBasedBeliefReviser(),
     brain,
     storage,

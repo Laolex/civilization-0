@@ -1,8 +1,9 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import type { CausalChainView, ChainNode } from "../lib/types";
+import { SocialDrivers } from "./SocialDrivers";
 
-const ACCENT_KINDS = new Set(["compute", "storage"]);
+const ACCENT_KINDS = new Set(["compute", "storage", "social"]);
 
 function NodeCard({ node, extra }: { node: ChainNode; extra?: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -41,7 +42,11 @@ function NodeCard({ node, extra }: { node: ChainNode; extra?: ReactNode }) {
         </div>
       </button>
 
-      {open && (
+      {open && node.kind === "social" ? (
+        <div className="node-detail">
+          <SocialDrivers drivers={node.socialDrivers ?? []} socialQuery={node.socialQuery} orgDriver={node.orgDriver} />
+        </div>
+      ) : open ? (
         <div className="node-detail">
           <dl className="node-detail-grid">
             {Object.entries(node.detail).map(([k, v]) => {
@@ -56,7 +61,7 @@ function NodeCard({ node, extra }: { node: ChainNode; extra?: ReactNode }) {
             {extra}
           </dl>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

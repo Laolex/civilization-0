@@ -43,12 +43,24 @@ export interface Belief {
   sourceMemoryIds: string[]; updatedDay: number;
 }
 
+export interface SocialDriver {
+  id: string; name: string;
+  relationshipStrength: number; relevance: number; blendedScore: number;
+  trust: number; influence: number; neighborText: string;
+}
+export interface OrgDriver { id: string; name: string; action?: string; reasoning?: string; }
+
 export interface ExecutionMeta {
   provider: string;
   model: string;
   requestId?: string;
   verified?: boolean;
   verification?: unknown;
+  /** GraphRAG: the neighbors whose trust×relevance drove this decision (mirror of the
+   *  0G trace's drivers.socialDrivers, so the UI renders without a 0G round-trip). */
+  socialDrivers?: SocialDriver[];
+  socialQuery?: string;
+  orgDriver?: OrgDriver;
 }
 
 export interface Decision {
@@ -84,6 +96,36 @@ export interface Organization {
   treasury: number; reputation: number; goal: string; createdDay: number;
 }
 export interface Membership { orgId: string; citizenId: string; role: OrgRole; joinedDay: number; }
+
+export interface NeighborSummary {
+  id: string;
+  name: string;
+  relationship: { trust: number; friendship: number; influence: number };
+  latestAction?: ActionType;
+  latestReasoning?: string;
+  topGoal?: string;
+  strongestBelief?: string;
+  wealth: number;
+  reputation: number;
+}
+
+export interface ScoredNeighbor {
+  summary: NeighborSummary;
+  relationshipStrength: number; // 0..1 (normalized from the 0..100 trust+influence)
+  relevance: number;            // RELEVANCE_FLOOR..1
+  blendedScore: number;         // relationshipStrength * relevance
+  /** The exact string fed to the embedder for relevance scoring — kept so a
+   *  third party can recompute relevance = clamp(cosine(embed(neighborText), embed(socialQuery))). */
+  neighborText: string;
+}
+
+export interface OrgContext {
+  id: string;
+  name: string;
+  kind: OrgKind;
+  latestAction?: ActionType;
+  latestReasoning?: string;
+}
 
 export interface WorldState {
   day: number; economy: Record<string, number>; headline: string;

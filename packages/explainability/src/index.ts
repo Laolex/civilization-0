@@ -4,6 +4,18 @@ import type { StorageProvider } from "@civ/storage";
 export interface TraceDrivers {
   memories: { id: string; weight: number }[];
   beliefs: { id: string; weight: number }[];
+  socialDrivers?: {
+    id: string; name: string;
+    /** Display values (r2-rounded). */
+    relationshipStrength: number; relevance: number; blendedScore: number;
+    /** Raw inputs enabling independent recomputation:
+     *  relationshipStrength = clamp((trust+influence)/200)
+     *  relevance = clamp(cosine(embed(neighborText), embed(socialQuery))) */
+    trust: number; influence: number; neighborText: string;
+  }[];
+  orgDriver?: { id: string; name: string; action?: string; reasoning?: string };
+  /** The decision query used for relevance scoring — same for all neighbors in one tick. */
+  socialQuery?: string;
 }
 
 export interface BuildTraceArgs {
