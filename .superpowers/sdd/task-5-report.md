@@ -56,3 +56,48 @@ pnpm typecheck
 
 ## Concerns
 None. Implementation matches brief exactly.
+
+---
+
+# Task 5 Fixes: Graceful Degradation + Test Assertion
+
+## Fix 1: Graceful Degradation (repository.ts)
+
+Wrapped the GraphRAG hydration block (neighbor-candidate query + `store.setNeighborCandidates(...)` AND org query + `store.setOrgContext(...)`) in a single `try { ... } catch (err) { ... }` to make the enrichment non-fatal.
+
+**Change:**
+- Lines 162–205 in `packages/persistence/src/repository.ts`: wrapped the neighbor and org hydration block (two SQL queries + setter calls) in `try-catch`.
+- Catch logs a warning `[loadContext] neighbor/org hydration failed for ${citizenId}, continuing memory-only:` and continues without rethrowing.
+- All other core context loading (citizen/goals/memories/beliefs/relationships) remains OUTSIDE the try—only the new GraphRAG enrichment is guarded.
+- `return store;` stays after the catch.
+
+## Fix 2: Test Assertion (loadcontext-graph.itest.ts)
+
+Added assertion in the first `it(...)` block after the existing marcus expectations:
+```typescript
+expect(marcus.latestReasoning).toBe("backed ada");
+```
+
+**Rationale:** The seed data (line 26 of itest) inserts a decision with reasoning `"backed ada"` for marcus. The hydration query now populates `latestReasoning` via `clip(x.latest_reasoning)`, so this assertion verifies the hydration is working.
+
+## Verification
+
+**Integration test:**
+```
+DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it packages/persistence/src/loadcontext-graph.itest.ts
+→ ✓ 2 tests passed (287ms)
+```
+
+**Typecheck:**
+```
+pnpm typecheck
+→ (no output = clean)
+```
+
+## Commit
+
+- `1ab87ad` fix(graphrag): make loadContext neighbor/org hydration non-fatal + assert latestReasoning
+
+## Files Changed
+- `packages/persistence/src/repository.ts` — try-catch wrapping around hydration block
+- `packages/persistence/src/loadcontext-graph.itest.ts` — added latestReasoning assertion

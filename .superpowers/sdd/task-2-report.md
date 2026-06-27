@@ -1,128 +1,55 @@
-# Task 2 Report: Store neighbor/org accessors + `OrgContext` type
+# Task 2 Report: Web types + chain builders emit the social node
 
-## Summary
-Successfully implemented Task 2 of the GraphRAG 1-hop neighbor-retrieval feature. Added `OrgContext` type to `@civ/shared` and four ephemeral retrieval-context accessors to the `WorldStore` interface and `InMemoryWorldStore` implementation. All changes follow TDD: test fails first, then passes after implementation.
+## Status
+DONE — all tests pass, typecheck clean, committed.
 
-## What Was Built
-
-### 1. `OrgContext` Type (packages/shared/src/index.ts)
-Added new interface after `ScoredNeighbor`:
-```typescript
-export interface OrgContext {
-  id: string;
-  name: string;
-  kind: OrgKind;
-  latestAction?: ActionType;
-  latestReasoning?: string;
-}
-```
-
-### 2. WorldStore Interface Extension (packages/store/src/index.ts)
-Added four methods to the `WorldStore` interface:
-- `getNeighborCandidates(citizenId: string): NeighborSummary[]`
-- `setNeighborCandidates(citizenId: string, candidates: NeighborSummary[]): void`
-- `getOrgContext(citizenId: string): OrgContext | null`
-- `setOrgContext(citizenId: string, org: OrgContext | null): void`
-
-Updated the import statement to include `NeighborSummary` and `OrgContext` from `@civ/shared`.
-
-### 3. InMemoryWorldStore Implementation (packages/store/src/index.ts)
-Added two private backing maps:
-```typescript
-private neighborCandidates = new Map<string, NeighborSummary[]>();
-private orgContexts = new Map<string, OrgContext>();
-```
-
-Implemented all four accessor methods with proper null-handling for `OrgContext`.
-
-### 4. Test Suite (packages/store/src/neighbor-context.test.ts)
-Created comprehensive test covering:
-- Default behavior (empty array for neighbors, null for org context)
-- Setting and retrieving values
-- Clearing org context by setting to null
+## Commit
+`b4cf544 feat(web): emit social-context node in causal chain builders`
 
 ## TDD Evidence
 
-### RED Phase
-```bash
-$ pnpm test packages/store/src/neighbor-context.test.ts
+### RED (before implementation)
 ```
-Output:
-```
-❯ packages/store/src/neighbor-context.test.ts (1 test | 1 failed) 5ms
-  × InMemoryWorldStore neighbor/org context > defaults to empty/null and round-trips set values 4ms
-    → s.getNeighborCandidates is not a function
-FAIL  packages/store/src/neighbor-context.test.ts
-TypeError: s.getNeighborCandidates is not a function
+ FAIL  apps/web/lib/citizen-db.test.ts > toCausalChain social node > inserts a social node after beliefs and before compute when drivers exist
+ FAIL  apps/web/lib/citizen-db.test.ts > toCausalChain social node > carries the drivers + query onto the social node
+ Tests  2 failed | 2 passed (4)
 ```
 
-### GREEN Phase
-After implementing the interface and methods:
-```bash
-$ pnpm test packages/store/src/neighbor-context.test.ts
+### GREEN (after implementation)
 ```
-Output:
+ ✓ apps/web/lib/citizen-db.test.ts (4 tests) 5ms
+ ✓ apps/web/lib/world.test.ts (5 tests) 5ms
+ Test Files  2 passed (2)
+ Tests  9 passed (9)
 ```
-✓ packages/store/src/neighbor-context.test.ts (1 test) 2ms
-Test Files  1 passed (1)
-Tests  1 passed (1)
-```
-
-### Type Safety Check
-```bash
-$ pnpm typecheck
-```
-Output: (clean, no errors)
 
 ## Files Changed
-1. **packages/shared/src/index.ts**: Added `OrgContext` interface (8 lines)
-2. **packages/store/src/index.ts**: 
-   - Updated imports to include `NeighborSummary, OrgContext` (1 line change)
-   - Extended `WorldStore` interface with 4 new methods (5 lines)
-   - Added 2 private backing maps to `InMemoryWorldStore` (2 lines)
-   - Implemented 4 accessor methods (5 lines)
-3. **packages/store/src/neighbor-context.test.ts**: New test file (25 lines)
 
-Total: 46 insertions (+1 deletion to imports)
+### `apps/web/lib/types.ts`
+- Added `"social"` to `ChainNodeKind`
+- Added `SocialDriverView` and `OrgDriverView` interfaces (fields identical to shared `SocialDriver`/`OrgDriver`)
+- Added optional `socialDrivers?`, `socialQuery?`, `orgDriver?` to `ChainNode`
 
-## Commit
-**Short SHA:** `498a038`  
-**Subject:** `feat(graphrag): store neighbor-candidate + org-context accessors`  
-**Branch:** `feat/graphrag-neighbor-retrieval` (no push to remote)
+### `apps/web/lib/citizen-db.ts`
+- Extended `RawChainInput` with `socialDrivers?`, `socialQuery?`, `orgDriver?`
+- Added exported `socialNode()` helper — returns `null` when no drivers/orgDriver (additive-only)
+- `toCausalChain()` now inserts social node after beliefs loop when `socialNode()` returns non-null
 
-## Design Decisions
+### `apps/web/lib/world.ts`
+- Imported `socialNode` from `./citizen-db` (single definition, no duplication)
+- Inserted `socialNode(meta?.socialDrivers, meta?.socialQuery, meta?.orgDriver)` after the beliefs loop, before the compute push
 
-### Ephemeral Storage
-The accessor methods use ephemeral Maps that are NOT persisted in `snapshot()`, as specified in the brief. This is correct because:
-- These accessors serve as retrieval context during the neighbor-selection phase
-- They are hydrated by persistence (Task 5) for each reasoning cycle
-- Not storing them in snapshot() keeps the world state clean and avoids stale context
+### `packages/persistence/src/read.ts`
+- Imported `SocialDriver`, `OrgDriver` from `@civ/shared`
+- Added `socialDrivers: SocialDriver[]`, `socialQuery: string | null`, `orgDriver: OrgDriver | null` to `RawDecisionChain`
+- `readDecisionChainRaw()` now extracts and returns these three fields from `meta`
 
-### Null Handling
-`OrgContext` uses `OrgContext | null` because:
-- An organization context may not exist initially or may need to be cleared
-- `setOrgContext(citizenId, null)` deletes the entry from the map
-- `getOrgContext()` returns `null` explicitly when no context exists (not `undefined`)
+### `apps/web/app/citizens/[id]/page.tsx` (citizen page builder — Step 6 lookup result)
+- **What the lookup found:** The page at line 71 passed `chainRaw` (a `RawDecisionChain`) directly as `toCausalChain(chainRaw)`. This is a near-passthrough, but TypeScript rejected the direct pass due to a `null` vs `undefined` mismatch on `socialQuery` and `orgDriver` (`RawDecisionChain` uses `| null`, `RawChainInput` uses `| undefined`).
+- **Fix applied:** Replaced the direct pass with an explicit spread that normalises `null → undefined` for the two nullable fields (`socialQuery ?? undefined`, `orgDriver ?? undefined`). `socialDrivers` passes through directly (already `SocialDriver[]`).
 
-### Map Structure
-Separate maps for neighbors and org context because:
-- Different access patterns and lifecycles
-- Neighbors are arrays (multiple candidates), org is singular
-- Cleaner API semantics
-
-## Self-Review
-
-✓ All types are properly imported and exported  
-✓ Test follows the exact specification from the brief  
-✓ No modifications to `snapshot()` (ephemeral context correctly isolated)  
-✓ Implementation matches test expectations exactly  
-✓ No TypeScript errors after typecheck  
-✓ Commit follows naming conventions (no Co-Authored-By trailer)  
-✓ All four methods have proper implementations with correct return types  
-✓ Null handling is consistent with optional parameters  
-
-## Concerns
-None. The implementation is straightforward, well-tested, and follows TypeScript best practices. The ephemeral nature of the accessors is correctly maintained.
-
-## Next Steps
-Task 3 will extend the citizen's reasoning loop to call `getNeighborCandidates` and `setNeighborCandidates` during retrieval scoring. Task 4 will use these accessors in the engine's neighbor-selection logic.
+## Constraints Verified
+- **Additive only**: `socialNode()` returns `null` when `drivers` is empty and `orgDriver` is falsy — confirmed by test "omits the social node when there are no drivers"
+- **No logic duplication**: `socialNode` defined once in `citizen-db.ts`, imported by `world.ts`
+- **View types match shared types**: `SocialDriverView`/`OrgDriverView` fields are identical to `SocialDriver`/`OrgDriver`
+- **world.test.ts existing snapshot fixtures** have no `meta.socialDrivers` → social node correctly omitted → all 5 existing world tests still pass

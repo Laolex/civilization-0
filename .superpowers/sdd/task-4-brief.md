@@ -1,165 +1,75 @@
-### Task 4: Engine wiring + `socialDrivers` provenance
+### Task 4: Verify page shows social drivers
 
 **Files:**
-- Modify: `packages/explainability/src/index.ts` (`TraceDrivers`)
-- Modify: `packages/engine/src/index.ts` (`TickDeps`, tick, drivers)
-- Modify: `packages/engine/src/scenario.ts` (add `graphRetriever` to deps so the live-ish demo path exercises it)
-- Test: `packages/engine/src/graph-drivers.test.ts`
+- Modify: `apps/web/components/VerifyOnZeroG.tsx` (type the excerpt's socialDrivers, render `SocialDrivers`)
+- Modify: `apps/web/components/VerifyOnZeroG.test.tsx` (assert drivers render)
 
 **Interfaces:**
-- Consumes: `GraphRetriever` from `@civ/memory`; `store.getNeighborCandidates/getOrgContext`; `DecisionContext.neighbors/orgContext`.
-- Produces: `TickDeps.graphRetriever?: GraphRetriever`; archived trace record carries `drivers.socialDrivers` + `drivers.orgDriver`.
+- Consumes: `/api/verify` excerpt `{ decision, verified, socialQuery, socialDrivers, orgDriver }` (already returned), `SocialDrivers` component (Task 3), `SocialDriverView`/`OrgDriverView` types.
 
-- [ ] **Step 1: Extend `TraceDrivers`.** In `packages/explainability/src/index.ts`, replace the `TraceDrivers` interface with:
+- [ ] **Step 1: Write the failing test**
 
-```typescript
-export interface TraceDrivers {
-  memories: { id: string; weight: number }[];
-  beliefs: { id: string; weight: number }[];
-  socialDrivers?: { id: string; name: string; relationshipStrength: number; relevance: number; blendedScore: number }[];
-  orgDriver?: { id: string; name: string; action?: string; reasoning?: string };
-}
+In `apps/web/components/VerifyOnZeroG.test.tsx`, add a test that mocks `fetch` to return an excerpt with `socialDrivers` and asserts a driver name appears after clicking "Verify on 0G". Match the file's existing fetch-mock style; the shape to return:
+
+```ts
+const excerpt = {
+  decision: { action: "invest", targetId: "marcus" }, verified: true,
+  socialQuery: "who do I trust on risk?",
+  socialDrivers: [{ id: "marcus", name: "Marcus Vale", relationshipStrength: 0.68, relevance: 0.46, blendedScore: 0.31, trust: 71, influence: 65, neighborText: "steady" }],
+  orgDriver: null,
+};
+// fetch resolves { ok: true, key: "k", bytes: 100, excerpt }
+// after clicking "Verify on 0G": expect(await screen.findByText("Marcus Vale")).toBeDefined();
 ```
 
-(No other explainability change — `buildAndArchive` already archives `drivers` verbatim into the `civ.provenance/v0` record.)
+> If `VerifyOnZeroG.test.tsx` does not exist or does not mock fetch, create the test with a `vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, key: "k", bytes: 100, excerpt }) }))` setup and `vi.unstubAllGlobals()` teardown.
 
-- [ ] **Step 2: Write the failing test.** Create `packages/engine/src/graph-drivers.test.ts`:
+- [ ] **Step 2: Run test to verify it fails**
 
-```typescript
-import { describe, it, expect } from "vitest";
-import { InMemoryWorldStore } from "@civ/store";
-import { FakeEmbedder, MemoryIndex, GraphRetriever } from "@civ/memory";
-import { RuleBasedBeliefReviser } from "@civ/beliefs";
-import { FakeBrain } from "@civ/brain";
-import { FakeStorage } from "@civ/storage";
-import { ExplainabilityService } from "@civ/explainability";
-import { runCitizenTick, type TickDeps } from "./index";
-import type { DecisionContext } from "@civ/brain";
+Run: `npx vitest run apps/web/components/VerifyOnZeroG.test.tsx`
+Expected: FAIL — drivers not rendered.
 
-function setup() {
-  const store = new InMemoryWorldStore();
-  const embedder = new FakeEmbedder();
-  store.upsertCitizen({ id: "ada", name: "Ada", occupation: "Engineer", age: 29,
-    traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
-    wealth: 0, reputation: 50, tier: 3, createdDay: 0 });
-  store.upsertGoal({ id: "g1", citizenId: "ada", kind: "wealth", description: "capital", progress: 0.1, active: true });
-  store.setWorldState({ day: 5, economy: {}, headline: "Boom" });
-  store.setNeighborCandidates("ada", [{
-    id: "marcus", name: "Marcus", relationship: { trust: 70, friendship: 50, influence: 60 },
-    latestAction: "invest", latestReasoning: "capital", topGoal: "capital", wealth: 100000, reputation: 70,
-  }]);
-  store.setOrgContext("ada", { id: "o1", name: "Collective", kind: "guild", latestAction: "partner", latestReasoning: "grow" });
+- [ ] **Step 3: Render drivers in VerifyOnZeroG**
 
-  let captured: DecisionContext | null = null;
-  const brain = new FakeBrain((ctx) => {
-    captured = ctx;
-    return { action: "work", targetId: null, reasoning: "r", memoryWeights: {}, beliefWeights: {} };
-  });
-  const storage = new FakeStorage();
-  let n = 0;
-  const deps: TickDeps = {
-    store, embedder, memoryIndex: new MemoryIndex(store, embedder),
-    graphRetriever: new GraphRetriever(embedder),
-    reviser: new RuleBasedBeliefReviser(), brain, storage,
-    explain: new ExplainabilityService(storage),
-    clock: { day: 5 }, idgen: () => `id${++n}`,
-  };
-  return { deps, storage, getCaptured: () => captured };
-}
+In `apps/web/components/VerifyOnZeroG.tsx`:
+- Import: `import { SocialDrivers } from "./SocialDrivers";` and `import type { SocialDriverView, OrgDriverView } from "../lib/types";`
+- Extend the `State` "ok" excerpt type and the `j.excerpt` parse type to include `socialQuery?: string | null; socialDrivers?: SocialDriverView[]; orgDriver?: OrgDriverView | null`.
+- In the `s.status === "ok"` block, after the `<pre>` excerpt, add (only when drivers exist):
 
-describe("engine social retrieval", () => {
-  it("passes selected neighbors + org into the brain context", async () => {
-    const { deps, getCaptured } = setup();
-    const r = await runCitizenTick(deps, "ada");
-    const ctx = getCaptured()!;
-    expect(ctx.neighbors?.[0].summary.id).toBe("marcus");
-    expect(ctx.orgContext?.id).toBe("o1");
-    expect(r.decision.action).toBe("work");
-  });
-
-  it("records socialDrivers + orgDriver in the archived trace record", async () => {
-    const { deps, storage } = setup();
-    const r = await runCitizenTick(deps, "ada");
-    const rec = storage.calls.find((c) => c.key === `trace/${r.decision.id}`)!.data as any;
-    expect(rec.drivers.socialDrivers[0].id).toBe("marcus");
-    expect(rec.drivers.socialDrivers[0].blendedScore).toBeGreaterThan(0);
-    expect(rec.drivers.orgDriver.id).toBe("o1");
-  });
-
-  it("degrades to empty socialDrivers when no graphRetriever is wired", async () => {
-    const { deps, storage } = setup();
-    const r = await runCitizenTick({ ...deps, graphRetriever: undefined }, "ada");
-    const rec = storage.calls.find((c) => c.key === `trace/${r.decision.id}`)!.data as any;
-    expect(rec.drivers.socialDrivers).toEqual([]);
-  });
-});
+```tsx
+          {Array.isArray(s.excerpt.socialDrivers) && s.excerpt.socialDrivers.length > 0 && (
+            <div className="verify-social">
+              <div className="verify-social-head mono">social context · graph-reasoned</div>
+              <SocialDrivers
+                drivers={s.excerpt.socialDrivers}
+                socialQuery={s.excerpt.socialQuery ?? undefined}
+                orgDriver={s.excerpt.orgDriver ?? undefined}
+              />
+            </div>
+          )}
 ```
 
-- [ ] **Step 3: Run it, verify it fails.** Run: `pnpm test packages/engine/src/graph-drivers.test.ts`
-Expected: FAIL — `graphRetriever` not on `TickDeps` / `socialDrivers` undefined.
+(Keep the existing `<pre>` JSON dump — it remains the raw proof; the `SocialDrivers` block is the readable layer.)
 
-- [ ] **Step 4: Wire the engine.** In `packages/engine/src/index.ts`:
+- [ ] **Step 4: Add minimal style**
 
-(a) Add to the imports from `@civ/memory`:
-```typescript
-import { type Embedder, MemoryIndex, GraphRetriever } from "@civ/memory";
-```
-(b) Add to `TickDeps` (after `memoryIndex: MemoryIndex;`):
-```typescript
-  graphRetriever?: GraphRetriever;
-```
-(c) Add the const near `RETRIEVE_K` (~line 21) and a rounding helper:
-```typescript
-const NEIGHBOR_K = Number(process.env.NEIGHBOR_K ?? "3");
-const r2 = (n: number) => Math.round(n * 100) / 100;
-```
-(d) Destructure `graphRetriever` in the deps line (~line 46):
-```typescript
-  const { store, embedder, memoryIndex, graphRetriever, reviser, brain, storage, explain, clock, idgen } = deps;
-```
-(e) After the `relationships` line (~line 59) add:
-```typescript
-  const neighbors = graphRetriever
-    ? graphRetriever.selectNeighbors(store.getNeighborCandidates(citizenId), query, NEIGHBOR_K)
-    : [];
-  const orgContext = store.getOrgContext(citizenId);
-```
-(f) Pass them into `brain.decide` (~line 64):
-```typescript
-  const result = await brain.decide({
-    citizen, goal, memories, beliefs, relationships, worldState,
-    availableActions: forced ?? ALL_ACTIONS, neighbors, orgContext,
-  });
-```
-(g) Extend the `drivers` object in `explain.buildAndArchive` (~line 99):
-```typescript
-    drivers: {
-      memories: dm.map((d) => ({ id: d.memoryId, weight: d.weight })),
-      beliefs: db.map((d) => ({ id: d.beliefId, weight: d.weight })),
-      socialDrivers: neighbors.map((n) => ({
-        id: n.summary.id, name: n.summary.name,
-        relationshipStrength: r2(n.relationshipStrength),
-        relevance: r2(n.relevance), blendedScore: r2(n.blendedScore),
-      })),
-      orgDriver: orgContext
-        ? { id: orgContext.id, name: orgContext.name, action: orgContext.latestAction, reasoning: orgContext.latestReasoning }
-        : undefined,
-    },
+Append to `apps/web/app/globals.css`:
+
+```css
+.verify-social { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.verify-social-head { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
 ```
 
-- [ ] **Step 5: Run the new test, verify it passes.** Run: `pnpm test packages/engine/src/graph-drivers.test.ts`
-Expected: PASS (3 tests).
+- [ ] **Step 5: Run test to verify it passes**
 
-- [ ] **Step 6: Wire the demo scenario.** In `packages/engine/src/scenario.ts`, add `GraphRetriever` to the `@civ/memory` import and add `graphRetriever: new GraphRetriever(embedder),` to the `deps` object (~line 49, beside `memoryIndex`).
+Run: `npx vitest run apps/web/components/VerifyOnZeroG.test.tsx && pnpm -r typecheck`
+Expected: PASS + clean.
 
-- [ ] **Step 7: Run the full unit suite + typecheck (determinism guard).** Run: `pnpm test` then `pnpm typecheck`
-Expected: all unit tests PASS; typecheck clean. (Existing `TickDeps` literals compile unchanged because `graphRetriever` is optional.)
-
-- [ ] **Step 8: Commit.**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add packages/explainability/src/index.ts packages/engine/src/index.ts packages/engine/src/scenario.ts packages/engine/src/graph-drivers.test.ts
-git commit -m "feat(graphrag): engine selects neighbors + records socialDrivers/orgDriver"
+git add apps/web/components/VerifyOnZeroG.tsx apps/web/components/VerifyOnZeroG.test.tsx apps/web/app/globals.css
+git commit -m "feat(web): show social drivers on the verify page"
 ```
 
 ---

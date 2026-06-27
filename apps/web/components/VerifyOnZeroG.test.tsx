@@ -5,6 +5,7 @@ import { VerifyOnZeroG } from "./VerifyOnZeroG";
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("VerifyOnZeroG — render smoke", () => {

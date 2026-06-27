@@ -1,133 +1,126 @@
-### Task 1: Shared types + `GraphRetriever`
+### Task 1: Shared types + engine mirrors socialDrivers into decision.meta
 
 **Files:**
-- Modify: `packages/shared/src/index.ts` (append types after the `Membership` interface, ~line 86)
-- Create: `packages/memory/src/graph-retriever.ts`
-- Modify: `packages/memory/src/index.ts` (re-export)
-- Test: `packages/memory/src/graph-retriever.test.ts`
+- Modify: `packages/shared/src/index.ts:46-59` (add `SocialDriver`, `OrgDriver`, extend `ExecutionMeta`)
+- Modify: `packages/engine/src/index.ts:64-121` (compute `socialDrivers` once, attach to `decision.meta`, reuse in trace)
+- Test: `packages/engine/src/graph-drivers.test.ts` (extend)
 
 **Interfaces:**
-- Produces: `NeighborSummary`, `ScoredNeighbor` (in `@civ/shared`); `class GraphRetriever { constructor(embedder: Embedder); selectNeighbors(candidates: NeighborSummary[], query: string, k: number): ScoredNeighbor[] }` (in `@civ/memory`).
-- Consumes: `cosineSimilarity` and `ActionType` from `@civ/shared`; `Embedder` from `@civ/memory`.
+- Produces: `SocialDriver`, `OrgDriver` (exported from `@civ/shared`); `ExecutionMeta.socialDrivers?: SocialDriver[]`, `ExecutionMeta.socialQuery?: string`, `ExecutionMeta.orgDriver?: OrgDriver`.
+- Consumes: existing `neighbors` array from `graphRetriever.selectNeighbors` (each item: `{ summary: { id, name, relationship: { trust, influence } }, relationshipStrength, relevance, blendedScore, neighborText }`), existing `orgContext`, existing `r2` rounding helper.
 
-- [ ] **Step 1: Add the shared types.** Append to `packages/shared/src/index.ts`:
+- [ ] **Step 1: Write the failing test**
 
-```typescript
-export interface NeighborSummary {
-  id: string;
-  name: string;
-  relationship: { trust: number; friendship: number; influence: number };
-  latestAction?: ActionType;
-  latestReasoning?: string;
-  topGoal?: string;
-  strongestBelief?: string;
-  wealth: number;
-  reputation: number;
-}
+Add to `packages/engine/src/graph-drivers.test.ts` (keep existing imports; reuse the file's existing tick harness — match how the existing tests build `deps`/run `runCitizenTick`; the existing test already exercises neighbors):
 
-export interface ScoredNeighbor {
-  summary: NeighborSummary;
-  relationshipStrength: number; // 0..1 (normalized from the 0..100 trust+influence)
-  relevance: number;            // RELEVANCE_FLOOR..1
-  blendedScore: number;         // relationshipStrength * relevance
-}
-```
-
-- [ ] **Step 2: Write the failing test.** Create `packages/memory/src/graph-retriever.test.ts`:
-
-```typescript
-import { describe, it, expect } from "vitest";
-import { FakeEmbedder } from "./index";
-import { GraphRetriever } from "./graph-retriever";
-import type { NeighborSummary } from "@civ/shared";
-
-const N = (id: string, trust: number, influence: number, text: string): NeighborSummary => ({
-  id, name: id, relationship: { trust, friendship: 50, influence },
-  latestReasoning: text, wealth: 0, reputation: 50,
-});
-
-describe("GraphRetriever.selectNeighbors", () => {
-  const gr = new GraphRetriever(new FakeEmbedder());
-
-  it("returns [] for no candidates or k<=0", () => {
-    expect(gr.selectNeighbors([], "x", 3)).toEqual([]);
-    expect(gr.selectNeighbors([N("a", 80, 80, "x")], "x", 0)).toEqual([]);
+```ts
+it("mirrors socialDrivers into decision.meta for the UI", async () => {
+  // (reuse this file's existing harness that produces a tick with neighbors)
+  const result = await runTickWithNeighbors(); // existing helper in this file
+  const drivers = result.decision.meta?.socialDrivers;
+  expect(Array.isArray(drivers)).toBe(true);
+  expect(drivers!.length).toBeGreaterThan(0);
+  const d = drivers![0];
+  expect(d).toMatchObject({
+    id: expect.any(String), name: expect.any(String),
+    relationshipStrength: expect.any(Number), relevance: expect.any(Number),
+    blendedScore: expect.any(Number), trust: expect.any(Number),
+    influence: expect.any(Number), neighborText: expect.any(String),
   });
-
-  it("normalizes relationshipStrength from the 0..100 scale", () => {
-    const [r] = gr.selectNeighbors([N("a", 70, 60, "alpha")], "alpha", 1);
-    expect(r.relationshipStrength).toBeCloseTo(0.65, 5); // (70+60)/200
-  });
-
-  it("applies the relevance floor when text does not overlap the query", () => {
-    const [r] = gr.selectNeighbors([N("a", 80, 80, "")], "totally different", 1);
-    expect(r.relevance).toBeCloseTo(0.1, 5); // RELEVANCE_FLOOR
-  });
-
-  it("ranks by blendedScore, bounded by k, deterministic id tie-break", () => {
-    const cands = [N("z", 80, 80, "shared topic"), N("a", 80, 80, "shared topic"), N("b", 10, 10, "shared topic")];
-    const out = gr.selectNeighbors(cands, "shared topic", 2);
-    expect(out).toHaveLength(2);
-    expect(out.map((s) => s.summary.id)).toEqual(["a", "z"]); // equal score -> id asc
-    expect(out[0].blendedScore).toBeGreaterThanOrEqual(out[1].blendedScore);
-  });
+  expect(result.decision.meta?.socialQuery).toEqual(expect.any(String));
 });
 ```
 
-- [ ] **Step 3: Run it, verify it fails.** Run: `pnpm test packages/memory/src/graph-retriever.test.ts`
-Expected: FAIL — `Cannot find module './graph-retriever'`.
+> If the existing file does not expose a `runTickWithNeighbors` helper, copy the setup block from the nearest existing test in the same file that asserts on `trace.drivers.socialDrivers`, and assert on `result.decision.meta.socialDrivers` instead.
 
-- [ ] **Step 4: Implement `GraphRetriever`.** Create `packages/memory/src/graph-retriever.ts`:
+- [ ] **Step 2: Run test to verify it fails**
 
-```typescript
-import { cosineSimilarity, type NeighborSummary, type ScoredNeighbor } from "@civ/shared";
-import type { Embedder } from "./index";
+Run: `npx vitest run packages/engine/src/graph-drivers.test.ts -t "mirrors socialDrivers"`
+Expected: FAIL — `result.decision.meta.socialDrivers` is `undefined`.
 
-const RELEVANCE_FLOOR = Number(process.env.RELEVANCE_FLOOR ?? "0.1");
+- [ ] **Step 3: Add shared types**
 
-const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
+In `packages/shared/src/index.ts`, replace the `ExecutionMeta` block (lines 46-52) with:
 
-function neighborText(n: NeighborSummary): string {
-  return [n.name, n.latestAction, n.latestReasoning, n.topGoal, n.strongestBelief]
-    .filter(Boolean).join(" ");
+```ts
+export interface SocialDriver {
+  id: string; name: string;
+  relationshipStrength: number; relevance: number; blendedScore: number;
+  trust: number; influence: number; neighborText: string;
 }
+export interface OrgDriver { id: string; name: string; action?: string; reasoning?: string; }
 
-/** Pure, deterministic query-aware 1-hop neighbor selection. No network. */
-export class GraphRetriever {
-  constructor(private readonly embedder: Embedder) {}
-
-  selectNeighbors(candidates: NeighborSummary[], query: string, k: number): ScoredNeighbor[] {
-    if (candidates.length === 0 || k <= 0) return [];
-    const q = this.embedder.embed(query);
-    const scored: ScoredNeighbor[] = candidates.map((summary) => {
-      const relationshipStrength = clamp01((summary.relationship.trust + summary.relationship.influence) / 200);
-      const raw = cosineSimilarity(this.embedder.embed(neighborText(summary)), q);
-      const relevance = Math.max(RELEVANCE_FLOOR, Math.min(1, raw));
-      return { summary, relationshipStrength, relevance, blendedScore: relationshipStrength * relevance };
-    });
-    scored.sort((a, b) =>
-      b.blendedScore - a.blendedScore ||
-      b.relationshipStrength - a.relationshipStrength ||
-      a.summary.id.localeCompare(b.summary.id));
-    return scored.slice(0, k);
-  }
+export interface ExecutionMeta {
+  provider: string;
+  model: string;
+  requestId?: string;
+  verified?: boolean;
+  verification?: unknown;
+  /** GraphRAG: the neighbors whose trust×relevance drove this decision (mirror of the
+   *  0G trace's drivers.socialDrivers, so the UI renders without a 0G round-trip). */
+  socialDrivers?: SocialDriver[];
+  socialQuery?: string;
+  orgDriver?: OrgDriver;
 }
 ```
 
-- [ ] **Step 5: Re-export from the package index.** Append to `packages/memory/src/index.ts`:
+- [ ] **Step 4: Compute socialDrivers once in the engine and attach to meta**
 
-```typescript
-export { GraphRetriever } from "./graph-retriever";
+In `packages/engine/src/index.ts`, import the type and add a single source of truth. After line 67 (`const orgContext = store.getOrgContext(citizenId);`) add:
+
+```ts
+  // GraphRAG drivers, computed once and written to BOTH decision.meta (fast UI mirror)
+  // and the 0G trace (canonical, verifiable copy).
+  const socialDrivers = neighbors.map((n) => ({
+    id: n.summary.id, name: n.summary.name,
+    relationshipStrength: r2(n.relationshipStrength),
+    relevance: r2(n.relevance), blendedScore: r2(n.blendedScore),
+    trust: n.summary.relationship.trust,
+    influence: n.summary.relationship.influence,
+    neighborText: n.neighborText,
+  }));
+  const orgDriver = orgContext
+    ? { id: orgContext.id, name: orgContext.name, action: orgContext.latestAction, reasoning: orgContext.latestReasoning }
+    : undefined;
+  const socialQuery = neighbors.length ? query : undefined;
 ```
 
-- [ ] **Step 6: Run the test, verify it passes.** Run: `pnpm test packages/memory/src/graph-retriever.test.ts`
-Expected: PASS (4 tests).
+Then in the `decision` object (lines 85-89) change `meta: result.meta,` to merge the drivers in:
 
-- [ ] **Step 7: Commit.**
+```ts
+    brainProvider: brain.name, brainModel: brain.model,
+    meta: { ...result.meta, ...(socialDrivers.length ? { socialDrivers, socialQuery } : {}), ...(orgDriver ? { orgDriver } : {}) },
+```
+
+And in the trace `drivers` block (lines 108-121) replace the inline `socialDrivers`/`socialQuery`/`orgDriver` literals with the precomputed consts:
+
+```ts
+    drivers: {
+      memories: dm.map((d) => ({ id: d.memoryId, weight: d.weight })),
+      beliefs: db.map((d) => ({ id: d.beliefId, weight: d.weight })),
+      socialDrivers,
+      socialQuery,
+      orgDriver,
+    },
+```
+
+Add `SocialDriver` to the existing `@civ/shared` import if the file references the type; otherwise no import is needed (the literals are structurally typed).
+
+- [ ] **Step 5: Run test to verify it passes**
+
+Run: `npx vitest run packages/engine/src/graph-drivers.test.ts`
+Expected: PASS (new test + existing trace-drivers tests still green — the trace shape is unchanged).
+
+- [ ] **Step 6: Typecheck**
+
+Run: `pnpm -r typecheck`
+Expected: clean.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/shared/src/index.ts packages/memory/src/graph-retriever.ts packages/memory/src/index.ts packages/memory/src/graph-retriever.test.ts
-git commit -m "feat(graphrag): GraphRetriever + NeighborSummary/ScoredNeighbor types"
+git add packages/shared/src/index.ts packages/engine/src/index.ts packages/engine/src/graph-drivers.test.ts
+git commit -m "feat(engine): mirror socialDrivers into decision.meta for UI"
 ```
 
 ---

@@ -1,94 +1,52 @@
-# Task 3 Report: Brain context fields + prompt social block
+# Task 3 Report: SocialDrivers component + CausalChain social node
 
-## Summary
-Successfully implemented Task 3 of GraphRAG 1-hop neighbor retrieval feature. Widened `DecisionContext` interface with optional `neighbors` and `orgContext` fields, then added conditional rendering of "People around you" and "Your organization" blocks in the brain's `buildMessages` prompt builder.
-
-## Implementation Details
-
-### Step 1: Widen DecisionContext (packages/brain/src/index.ts)
-- Added import of `ScoredNeighbor` and `OrgContext` from `@civ/shared`
-- Added two optional fields to `DecisionContext` interface:
-  - `neighbors?: ScoredNeighbor[]` - list of scored neighbor entities
-  - `orgContext?: OrgContext | null` - organization context if the citizen belongs to one
-
-### Step 2-3: Add failing test cases (packages/zerog/src/brain.test.ts)
-Added test suite "buildMessages social context" with two cases:
-1. **"omits the People/Org blocks when none are present"** - ensures backward compatibility: when `neighbors` and `orgContext` are absent/empty, the prompt output omits both "People around you" and "Your organization" text blocks
-2. **"renders neighbors and org when present"** - verifies both blocks render correctly with sample data (Marcus neighbor, Ada Collective org)
-
-TDD RED verification:
-```
-Tests 1 failed | 15 passed (16)
-AssertionError: expected '...' to contain 'People around you'
-```
-
-### Step 4: Implement social block rendering (packages/zerog/src/brain.ts)
-Enhanced `buildMessages` function:
-- Extract neighbors into formatted "People around you" list:
-  - For each neighbor: name, trust/influence scores, latest action with reasoning, topGoal or strongestBelief, wealth/reputation
-  - Example: "Marcus: trust 70, influence 60; recently invest (backed Ada); pursuing grow capital; wealth 100000, reputation 70"
-- Extract org into "Your organization" statement:
-  - Format: "Your organization {name} ({kind})" + optional latest action + reasoning
-  - Example: "Your organization Ada Collective (guild) recently chose to partner: expand."
-- Conditionally insert both blocks in the user prompt:
-  - Only render "People around you:\n" section if neighbors array is non-empty
-  - Only render org statement if orgContext exists
-  - No rendering = no text change = backward compatible
-
-TDD GREEN verification:
-```
-Test Files  1 passed (1)
-Tests  16 passed (16)
-```
-
-## Test Results
-
-### Brain-specific tests (all passing)
-```
-pnpm test packages/zerog/src/brain.test.ts
-✓ packages/zerog/src/brain.test.ts (16 tests) 9ms
-Test Files  1 passed (1)
-Tests  16 passed (16)
-```
-
-### Full test suite
-```
-pnpm test
-Test Files  1 failed | 46 passed (47)
-Tests  2 failed | 187 passed (189)
-```
-Pre-existing failures (unrelated to this task):
-- `packages/zerog/src/eval/judge-metric.test.ts` - 2 failures due to missing OPIK_API_KEY environment variable
-- These failures existed before this PR and do not affect the social block implementation
-
-### Typecheck
-```
-pnpm typecheck
-(no output = success)
-```
-All TypeScript types verified without errors.
-
-## Files Changed
-1. **packages/brain/src/index.ts** - DecisionContext interface widened (+3 lines)
-2. **packages/zerog/src/brain.ts** - buildMessages implementation enhanced (+17 lines)
-3. **packages/zerog/src/brain.test.ts** - Added test suite with helper function (+31 lines)
+## Status
+COMPLETE — all tests pass, typecheck clean, committed.
 
 ## Commit
+- `75e8ecc` feat(web): render social-context drivers in the causal chain
+
+## TDD Evidence
+
+### RED (Step 2)
 ```
-473a0f1 feat(graphrag): brain DecisionContext neighbors/org + prompt social block
+npx vitest run apps/web/components/SocialDrivers.test.tsx
+→ Test Files  1 failed (1)  — module "./SocialDrivers" not found
 ```
 
-## Determinism & Backward Compatibility
-✓ Verified: existing `buildMessages` output unchanged when neighbors/orgContext absent
-- Test "omits the People/Org blocks when none are present" confirms both blocks properly omitted
-- Existing tests remain green (15 passing brain tests from before + 2 new = 16 total)
-- World state, citizen identity, goals, memories, beliefs, relationships prompts unchanged
+### Intermediate failure
+After first SocialDrivers.tsx implementation, the toggle test failed because `screen.getByText("Marcus invests steadily")` couldn't find text embedded inside the larger `<dd>` content (`trust 71 · influence 65 · "Marcus invests steadily"`). Fix: wrapped `{d.neighborText}` in a `<span>` so getByText can target it as a standalone element.
 
-## Concerns
-None. Implementation follows TDD RED→GREEN→REFACTOR strictly:
-- Failing tests added first with exact assertions from brief
-- Implementation code written exactly per brief specification
-- All new tests pass
-- All existing tests remain green
-- No type errors
-- Backward compatibility verified
+### GREEN (Step 4)
+```
+npx vitest run apps/web/components/SocialDrivers.test.tsx
+→ Tests  2 passed (2)
+```
+
+### Final run (Step 8)
+```
+npx vitest run apps/web/components/SocialDrivers.test.tsx apps/web/components/CausalChain.test.tsx
+→ Test Files  2 passed (2)
+   Tests  5 passed (5)
+
+pnpm -r typecheck
+→ apps/web typecheck: Done  (clean)
+```
+
+## Files Changed
+- **Created** `apps/web/components/SocialDrivers.tsx` — reusable component with driver rows (strength × relevance → blended score + bar), org-driver line, and recompute reveal toggle
+- **Created** `apps/web/components/SocialDrivers.test.tsx` — 2 tests (row rendering, recompute toggle)
+- **Modified** `apps/web/components/CausalChain.tsx` — imported SocialDrivers; added "social" to ACCENT_KINDS; replaced single `{open && ...}` block with ternary that renders SocialDrivers for social nodes and generic detail grid for all others
+- **Modified** `apps/web/components/CausalChain.test.tsx` — added social node to chain fixture, added social-node click test
+- **Modified** `apps/web/app/globals.css` — appended `.sd-*` styles
+
+## Token Substitutions
+| Brief token | Status | Substitution |
+|-------------|--------|--------------|
+| `--fg`      | ✓ exists (`#e4e6ea`) | — |
+| `--muted`   | ✓ exists (`#7d8490`) | — |
+| `--accent`  | ✓ exists (`#4f7ef8`) | — |
+| `--org`     | ✓ exists (`#c792ea`, second `:root` block) | — |
+| `--line`    | ✗ NOT defined | Substituted with `--slate` (`#252a32`) — the hairline/border color used throughout |
+
+No new color identities added. No new dependencies.
