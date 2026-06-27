@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import type { SocialDriver, OrgDriver } from "@civ/shared";
 
 /**
  * Read-only world projection for dashboards. Defined here (not in repository.ts)
@@ -173,6 +174,9 @@ export interface RawDecisionChain {
   memories: RawChainMemory[]; beliefs: RawChainBelief[];
   event: { id: string; day: number; type: string; targetId: string | null } | null;
   rootHash: string | null; txHash: string | null;
+  socialDrivers: SocialDriver[];
+  socialQuery: string | null;
+  orgDriver: OrgDriver | null;
 }
 
 export async function readDecisionChainRaw(pool: Pool, citizenId: string): Promise<RawDecisionChain | null> {
@@ -200,6 +204,9 @@ export async function readDecisionChainRaw(pool: Pool, citizenId: string): Promi
     beliefs: bels.rows.map((r) => ({ id: r.id, statement: r.statement, confidence: Number(r.confidence), weight: Number(r.weight) })),
     event: e ? { id: e.id, day: e.day, type: e.type, targetId: e.target_id ?? null } : null,
     rootHash: tr.rows[0]?.zg_root_hash ?? null, txHash: tr.rows[0]?.zg_tx_hash ?? null,
+    socialDrivers: (meta.socialDrivers as SocialDriver[] | undefined) ?? [],
+    socialQuery: (meta.socialQuery as string | undefined) ?? null,
+    orgDriver: (meta.orgDriver as OrgDriver | undefined) ?? null,
   };
 }
 
