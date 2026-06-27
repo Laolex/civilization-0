@@ -1,6 +1,9 @@
 "use client";
 import React, { useMemo, useState } from "react";
 import type { MapWorld } from "@civ/persistence/src/read";
+import { MapSidePanel } from "./MapSidePanel";
+import { edgeKey, replayEdges } from "../lib/replay";
+import type { SocialDriverView } from "../lib/types";
 
 // Deterministic hash → stable pseudo-random in [0,1) so the layout is identical
 // on the server and the client (no hydration mismatch) and stable across ticks.
@@ -80,6 +83,8 @@ function Field({ world }: { world: MapWorld }) {
   const { nodes, tethers } = useMemo(() => layout(world), [world]);
   const pos = useMemo(() => new Map(nodes.map((n) => [n.id, n] as const)), [nodes]);
   const [hover, setHover] = useState<string | null>(null);
+  const [selected, setSelected] = useState<{ id: string; name: string } | null>(null);
+  const [replay, setReplay] = useState<Map<string, number> | null>(null);
 
   // The hovered node's neighbourhood (itself + everything it's tied to).
   const lit = useMemo(() => {
@@ -96,6 +101,7 @@ function Field({ world }: { world: MapWorld }) {
   const edgeLit = (a: string, b: string) => !lit || lit.has(a) || lit.has(b);
 
   return (
+    <div className="cn-field-inner">
     <svg className="cn-svg" viewBox={`0 0 ${FW} ${FH}`} role="img" aria-label={`Social map of ${world.name}`}>
       <g className="cn-orbit">
         {/* org → member tethers (faint violet) */}
@@ -112,34 +118,51 @@ function Field({ world }: { world: MapWorld }) {
           const A = pos.get(e.a), B = pos.get(e.b);
           if (!A || !B) return null;
           const on = edgeLit(e.a, e.b);
+          const rk = replay?.get(edgeKey(e.a, e.b));
           return (
-            <line key={`e-${e.a}-${e.b}`} className="cn-edge" x1={A.x} y1={A.y} x2={B.x} y2={B.y}
-              strokeWidth={0.35 + e.strength * 0.6}
-              opacity={(on ? 1 : 0.1) * (0.28 + e.strength * 0.55)} />
+            <line key={`e-${e.a}-${e.b}`}
+              className={`cn-edge${rk != null ? " cn-edge--replay" : ""}`}
+              x1={A.x} y1={A.y} x2={B.x} y2={B.y}
+              strokeWidth={rk != null ? 0.5 + rk * 1.6 : 0.35 + e.strength * 0.6}
+              opacity={rk != null ? 1 : (on ? 1 : 0.1) * (0.28 + e.strength * 0.55)} />
           );
         })}
         {/* nodes */}
         {nodes.map((n) => {
           const r = n.kind === "org" ? 2.4 : TIER_R[n.tier] ?? 1.6;
           const href = n.kind === "org" ? `/orgs/${n.id}` : `/citizens/${n.id}`;
+          if (n.kind === "citizen") {
+            return (
+              <a key={n.id} href={href} className="cn-node"
+                onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
+                onClick={(e) => { e.preventDefault(); setSelected({ id: n.id, name: n.name }); setReplay(null); }}
+                style={{ opacity: dim(n.id) }}>
+                <circle className="cn-halo" cx={n.x} cy={n.y} r={r * 2.6} />
+                <circle className={`cn-dot cn-tier-${n.tier}`} cx={n.x} cy={n.y} r={r} />
+                <text className="cn-label" x={n.x} y={n.y - r - 1.6} textAnchor="middle">{n.name}</text>
+              </a>
+            );
+          }
           return (
             <a key={n.id} href={href} className="cn-node"
               onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
               style={{ opacity: dim(n.id) }}>
-              {n.kind === "org" ? (
-                <path className="cn-org" d={orgMark(n.x, n.y, r)} />
-              ) : (
-                <>
-                  <circle className="cn-halo" cx={n.x} cy={n.y} r={r * 2.6} />
-                  <circle className={`cn-dot cn-tier-${n.tier}`} cx={n.x} cy={n.y} r={r} />
-                </>
-              )}
+              <path className="cn-org" d={orgMark(n.x, n.y, r)} />
               <text className="cn-label" x={n.x} y={n.y - r - 1.6} textAnchor="middle">{n.name}</text>
             </a>
           );
         })}
       </g>
     </svg>
+    {selected && (
+      <MapSidePanel
+        citizenId={selected.id}
+        name={selected.name}
+        onReplay={(deciderId: string, drivers: SocialDriverView[]) => setReplay(replayEdges(deciderId, drivers))}
+        onClose={() => { setSelected(null); setReplay(null); }}
+      />
+    )}
+    </div>
   );
 }
 
