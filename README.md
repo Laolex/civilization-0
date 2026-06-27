@@ -48,7 +48,8 @@ result.verifyUrl;   // /verify/0x…  ← a public, keyless link anyone can chec
 The world is **running autonomously right now** — a systemd timer advances it on real 0G every 2 hours.
 
 - **`/world`** — the live dashboard: current day, population, recent events, each tagged **0G Compute ✓ / 0G Storage ✓**.
-- **`/citizens/[id]`** — any citizen's profile: life story, relationships, wealth, and the **causal chain** behind their latest decision (Memory → Belief → 0G Compute → Decision → Event → 0G Storage).
+- **`/citizens/[id]`** — any citizen's profile: life story, relationships, wealth, and the **causal chain** behind their latest decision (Memory → Belief → **Social context** → 0G Compute → Decision → Event → 0G Storage). The Social node names the **neighbors who actually drove the decision** (`trust × relevance → blended score`) with a "recompute yourself" reveal of the raw inputs.
+- **`/map`** — the living world as a force-directed social graph. It breathes when idle; **click any citizen** to open its causal chain, then **"Replay last decision"** lights up the exact relationship edges the reasoning retrieved, weighted by how much each one mattered.
 - **`/orgs`** — organizations that reason as agents in their own right (treasury, members, strategy decisions).
 - **`/history`** — searchable world history; every event links to its on-chain proof.
 - **`/verify/<rootHash>`** — **the money shot**: paste any decision's root hash (or click a "0G Storage ✓" badge anywhere in the app) and the page recovers the record straight from 0G Storage, keyless, and shows you the verified reasoning. Try it yourself.
@@ -97,6 +98,7 @@ A complete, working product — not a mockup:
 |---|---|
 | **Causality engine** | Pure TypeScript: citizens have memories (pgvector), beliefs, goals; the brain weights inputs to make a decision. Deterministic, fully tested. |
 | **0G adapters** | `ZeroGComputeBrain` (reasoning on 0G Compute, TEE-verified) + `ZeroGStorage` (trace archival) + a **keyless verifier** that recovers records from 0G Storage with no signer. |
+| **Social reasoning (GraphRAG)** | Query-aware 1-hop neighbor retrieval: each decision is partly driven by the citizens it trusts, scored `relationshipStrength × relevance → blended`. The raw inputs (trust, influence, neighbor text, the social query) are archived alongside the trace, so anyone can **recompute the scores from scratch** — verifiable retrieval, not just a stored answer. Surfaced in the causal chain, on `/verify`, and as edge-replay on `/map`. |
 | **Persistence + scheduler** | Postgres/pgvector world state; a cost-gated scheduler that ticks the world on 0G and **survives restarts**. |
 | **Organizations** | Orgs reason *as agents* on 0G via a persona adapter — strategy, hiring, treasury. |
 | **History + provenance** | Searchable event history; deterministic + 0G-narrated citizen life stories; provenance everywhere. |
@@ -146,7 +148,7 @@ packages/
   shared          types + the causality model
   engine          the decision engine (pure, deterministic)   ← never touched by features
   store           in-memory world store
-  memory          pgvector-backed memory retrieval
+  memory          pgvector memory retrieval + query-aware graph (1-hop neighbor) retrieval
   beliefs         worldview revision
   brain           BrainProvider interface (FakeBrain for tests)
   storage         StorageProvider interface (FakeStorage for tests)
@@ -176,7 +178,7 @@ export function orgPersona(org: Organization, day: number): Citizen {
 // → the org's decision then archives to 0G exactly like a citizen's. Same verifiable path, zero engine changes.
 ```
 
-**Stack:** Node 20, pnpm 9.15.4, TypeScript, Next.js 14 (App Router), Postgres 16 + pgvector, `@0gfoundation/0g-{storage,compute}-ts-sdk`. ~95 unit tests + ~37 integration tests, all green.
+**Stack:** Node 20, pnpm 9.15.4, TypeScript, Next.js 14 (App Router), Postgres 16 + pgvector, `@0gfoundation/0g-{storage,compute}-ts-sdk`. ~200 unit + ~40 integration tests — the core suite is green (2 eval-only tests need an external OPIK key).
 
 ---
 
