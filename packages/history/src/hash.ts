@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { GENESIS_PARENT } from "./types";
 import type { HistoryEvent, Hash } from "./types";
 
 /**
@@ -48,4 +49,20 @@ export function merkleRoot(hashes: Hash[]): Hash {
     level = next;
   }
   return level[0]!;
+}
+
+export function verifyChain(
+  events: { event: HistoryEvent; eventHash: Hash; parentHash: Hash }[],
+): { ok: boolean; brokenAt?: number; reason?: string } {
+  let expectedParent = GENESIS_PARENT;
+  for (let i = 0; i < events.length; i++) {
+    const row = events[i]!;
+    const recomputed = eventHash(row.event);
+    if (recomputed !== row.eventHash)
+      return { ok: false, brokenAt: i, reason: "eventHash mismatch (tampered payload)" };
+    if (row.parentHash !== expectedParent)
+      return { ok: false, brokenAt: i, reason: "parentHash discontinuity" };
+    expectedParent = row.eventHash;
+  }
+  return { ok: true };
 }

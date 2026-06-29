@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { canonicalJSON } from "./hash";
 import { sha256Hex, eventHash, merkleRoot } from "./hash";
-import { GENESIS_PARENT, SCHEMA_VERSION, type CognitiveTransition } from "./index";
+import { verifyChain } from "./hash";
+import { GENESIS_PARENT, SCHEMA_VERSION, type CognitiveTransition, type HistoryEvent } from "./index";
 
 describe("canonicalJSON", () => {
   it("is key-order independent", () => {
@@ -63,5 +64,38 @@ describe("merkleRoot", () => {
   it("returns the single leaf unchanged", () => {
     const h = sha256Hex("only");
     expect(merkleRoot([h])).toBe(h);
+  });
+});
+
+function chainOf(cts: CognitiveTransition[]) {
+  let parent = GENESIS_PARENT;
+  return cts.map((raw) => {
+    const ev = { ...raw, header: { ...raw.header, parentHash: parent } };
+    const h = eventHash(ev);
+    const row = { event: ev as HistoryEvent, eventHash: h, parentHash: parent };
+    parent = h;
+    return row;
+  });
+}
+
+describe("verifyChain", () => {
+  it("accepts a well-formed chain", () => {
+    const rows = chainOf([fakeCT({ header: undefined as never }), fakeCT()]
+      .map((_, i) => fakeCT({ reasoning: `r${i}` })));
+    expect(verifyChain(rows).ok).toBe(true);
+  });
+  it("detects a tampered payload", () => {
+    const rows = chainOf([fakeCT({ reasoning: "a" }), fakeCT({ reasoning: "b" })]);
+    (rows[1].event as CognitiveTransition).reasoning = "TAMPERED";
+    const r = verifyChain(rows);
+    expect(r.ok).toBe(false);
+    expect(r.brokenAt).toBe(1);
+  });
+  it("detects a broken parent link", () => {
+    const rows = chainOf([fakeCT({ reasoning: "a" }), fakeCT({ reasoning: "b" })]);
+    rows[1].parentHash = sha256Hex("wrong");
+    (rows[1].event as CognitiveTransition).header.parentHash = rows[1].parentHash;
+    rows[1].eventHash = eventHash(rows[1].event);
+    expect(verifyChain(rows).ok).toBe(false);
   });
 });
