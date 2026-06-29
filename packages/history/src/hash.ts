@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import type { HistoryEvent, Hash } from "./types";
+
 /**
  * Deterministic, language-independent JSON canonicalization (JCS / RFC 8785 intent).
  * Object keys sorted lexicographically (by UTF-16 code unit, matching Array.sort default,
@@ -20,4 +23,14 @@ export function canonicalJSON(value: unknown): string {
     return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalJSON(obj[k])).join(",") + "}";
   }
   throw new Error(`canonicalJSON: unsupported type ${t}`);
+}
+
+export function sha256Hex(input: string): Hash {
+  return "0x" + createHash("sha256").update(input, "utf8").digest("hex");
+}
+
+/** eventHash = sha256( canon(header) ‖ canon(payload) ), payload = event minus header. */
+export function eventHash(event: HistoryEvent): Hash {
+  const { header, ...payload } = event;
+  return sha256Hex(canonicalJSON(header) + "\n" + canonicalJSON(payload));
 }
