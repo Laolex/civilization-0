@@ -69,6 +69,28 @@ importers:
 
   packages/explainability: {}
 
+  packages/history:
+    dependencies:
+      '@civ/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@civ/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@civ/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@civ/zerog':
+        specifier: workspace:*
+        version: link:../zerog
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
   packages/memory: {}
 
   packages/persistence:
