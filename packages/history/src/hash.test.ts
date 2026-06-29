@@ -65,6 +65,9 @@ describe("merkleRoot", () => {
     const h = sha256Hex("only");
     expect(merkleRoot([h])).toBe(h);
   });
+  it("maps the empty set to sha256Hex(\"\")", () => {
+    expect(merkleRoot([])).toBe(sha256Hex(""));
+  });
 });
 
 function chainOf(cts: CognitiveTransition[]) {
@@ -80,9 +83,11 @@ function chainOf(cts: CognitiveTransition[]) {
 
 describe("verifyChain", () => {
   it("accepts a well-formed chain", () => {
-    const rows = chainOf([fakeCT({ header: undefined as never }), fakeCT()]
-      .map((_, i) => fakeCT({ reasoning: `r${i}` })));
+    const rows = chainOf([fakeCT({ reasoning: "r0" }), fakeCT({ reasoning: "r1" })]);
     expect(verifyChain(rows).ok).toBe(true);
+  });
+  it("accepts an empty chain", () => {
+    expect(verifyChain([]).ok).toBe(true);
   });
   it("detects a tampered payload", () => {
     const rows = chainOf([fakeCT({ reasoning: "a" }), fakeCT({ reasoning: "b" })]);
@@ -97,5 +102,15 @@ describe("verifyChain", () => {
     (rows[1].event as CognitiveTransition).header.parentHash = rows[1].parentHash;
     rows[1].eventHash = eventHash(rows[1].event);
     expect(verifyChain(rows).ok).toBe(false);
+  });
+  it("detects a forged header ancestry even when eventHash is recomputed to match", () => {
+    const rows = chainOf([fakeCT({ reasoning: "a" }), fakeCT({ reasoning: "b" })]);
+    // Lie about ancestry inside the event content, then recompute the stored hash so the
+    // recompute check passes; leave the envelope parentHash correct so linkage passes.
+    (rows[1].event as CognitiveTransition).header.parentHash = sha256Hex("lie");
+    rows[1].eventHash = eventHash(rows[1].event);
+    const r = verifyChain(rows);
+    expect(r.ok).toBe(false);
+    expect(r.brokenAt).toBe(1);
   });
 });

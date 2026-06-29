@@ -14,6 +14,9 @@ export function canonicalJSON(value: unknown): string {
   const t = typeof value;
   if (t === "number") {
     if (!Number.isFinite(value as number)) throw new Error("canonicalJSON: non-finite number");
+    // V8/Node-only: JSON.stringify number formatting is stable here. Full RFC 8785
+    // compliance (e.g. exponent normalization across engines) is a future gap, not a
+    // risk in this Node-only codebase.
     return JSON.stringify(value);
   }
   if (t === "boolean" || t === "string") return JSON.stringify(value);
@@ -57,6 +60,13 @@ export function verifyChain(
   let expectedParent = GENESIS_PARENT;
   for (let i = 0; i < events.length; i++) {
     const row = events[i]!;
+    // The event content's own ancestry claim (header.parentHash) must agree with the
+    // envelope's parentHash. Without this, an event can carry a fabricated ancestry,
+    // have its eventHash recomputed to match, and still pass the recompute + linkage
+    // checks below — embedding a permanent provenance lie that chain traversers read
+    // from header.parentHash. (Invariant #3, content-level.)
+    if (row.event.header.parentHash !== row.parentHash)
+      return { ok: false, brokenAt: i, reason: "header.parentHash disagrees with row.parentHash" };
     const recomputed = eventHash(row.event);
     if (recomputed !== row.eventHash)
       return { ok: false, brokenAt: i, reason: "eventHash mismatch (tampered payload)" };
