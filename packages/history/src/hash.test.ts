@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { canonicalJSON } from "./hash";
-import { sha256Hex, eventHash } from "./hash";
+import { sha256Hex, eventHash, merkleRoot } from "./hash";
 import { GENESIS_PARENT, SCHEMA_VERSION, type CognitiveTransition } from "./index";
 
 describe("canonicalJSON", () => {
@@ -48,5 +48,20 @@ describe("eventHash", () => {
     const a = fakeCT();
     const b = fakeCT({ header: { ...a.header, parentHash: sha256Hex("x") } });
     expect(eventHash(a)).not.toBe(eventHash(b));
+  });
+});
+
+describe("merkleRoot", () => {
+  it("is deterministic", () => {
+    const hs = [sha256Hex("a"), sha256Hex("b"), sha256Hex("c")];
+    expect(merkleRoot(hs)).toBe(merkleRoot(hs));
+  });
+  it("is order-sensitive", () => {
+    expect(merkleRoot([sha256Hex("a"), sha256Hex("b")]))
+      .not.toBe(merkleRoot([sha256Hex("b"), sha256Hex("a")]));
+  });
+  it("returns the single leaf unchanged", () => {
+    const h = sha256Hex("only");
+    expect(merkleRoot([h])).toBe(h);
   });
 });

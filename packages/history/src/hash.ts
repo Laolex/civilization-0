@@ -34,3 +34,18 @@ export function eventHash(event: HistoryEvent): Hash {
   const { header, ...payload } = event;
   return sha256Hex(canonicalJSON(header) + "\n" + canonicalJSON(payload));
 }
+
+export function merkleRoot(hashes: Hash[]): Hash {
+  if (hashes.length === 0) return sha256Hex("");
+  let level = hashes.slice();
+  while (level.length > 1) {
+    const next: Hash[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const left = level[i]!;
+      const right = i + 1 < level.length ? level[i + 1]! : left; // duplicate last on odd
+      next.push(sha256Hex(left + right));
+    }
+    level = next;
+  }
+  return level[0]!;
+}
