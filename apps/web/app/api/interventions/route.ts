@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getPool } from "@civ/persistence/src/pool";
 import { readWorld } from "@civ/persistence/src/read";
 import { canIntervene } from "@civ/persistence/src/intervention-authz";
-import { enqueueIntervention, listInterventions } from "@civ/persistence/src/intervention-write";
+import { enqueueIntervention, listInterventions, lastTickRequestAtMs } from "@civ/persistence/src/intervention-write";
 import { getCurrentUser } from "../../../lib/auth";
+import { assertCanForceTick, ForceTickError } from "../../../lib/force-tick";
 import { ALL_ACTIONS } from "@civ/shared";
 
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
   const worldId = typeof body.worldId === "string" ? body.worldId : "";
   const type = typeof body.type === "string" ? body.type : "";
 
-  if (type !== "whisper" && type !== "world_event" && type !== "dilemma") {
+  if (type !== "whisper" && type !== "world_event" && type !== "dilemma" && type !== "tick_request") {
     return NextResponse.json({ error: "unsupported intervention type" }, { status: 400 });
   }
   if (!worldId) return NextResponse.json({ error: "worldId is required" }, { status: 400 });
@@ -72,6 +73,31 @@ export async function POST(req: Request) {
     const row = await enqueueIntervention({
       id: `iv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       worldId, userId: user.id, type: "dilemma", targetCitizenId, payload: { text, actions },
+    });
+    return NextResponse.json(row, { status: 201 });
+  }
+
+  if (type === "tick_request") {
+    const world = await readWorld(getPool(), worldId);
+    if (!world) return NextResponse.json({ error: "world not found" }, { status: 404 });
+    try {
+      assertCanForceTick(
+        { id: user.id, plan: user.plan },
+        { id: world.id, ownerId: world.ownerId },
+        await lastTickRequestAtMs(worldId),
+        Date.now(),
+      );
+    } catch (e) {
+      if (e instanceof ForceTickError) {
+        return NextResponse.json(
+          { error: e.message, retryAfterMs: e.retryAfterMs },
+          { status: e.status });
+      }
+      throw e;
+    }
+    const row = await enqueueIntervention({
+      id: `iv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      worldId, userId: user.id, type: "tick_request", targetCitizenId: null, payload: {},
     });
     return NextResponse.json(row, { status: 201 });
   }
