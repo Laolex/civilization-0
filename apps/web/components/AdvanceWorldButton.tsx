@@ -12,8 +12,11 @@ export function AdvanceWorldButton({ worldId }: { worldId: string }) {
   // Tick down the cooldown countdown.
   React.useEffect(() => {
     if (state !== "cooldown" || cooldownMs <= 0) return;
-    const t = setTimeout(() => setCooldownMs((m) => Math.max(0, m - 1000)), 1000);
-    if (cooldownMs - 1000 <= 0) setState("idle");
+    const t = setTimeout(() => {
+      const next = Math.max(0, cooldownMs - 1000);
+      setCooldownMs(next);
+      if (next <= 0) setState("idle");
+    }, 1000);
     return () => clearTimeout(t);
   }, [state, cooldownMs]);
 
