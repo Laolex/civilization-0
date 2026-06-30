@@ -45,7 +45,7 @@ describe("worldStateKey", () => {
 
 import { worldFold } from "./reduce";
 import { GENESIS_PARENT, SCHEMA_VERSION } from "./index";
-import type { Genesis, WealthDelta, OrganizationDelta, HistoryEvent } from "./index";
+import type { Genesis, WealthDelta, RelationshipDelta, OrganizationDelta, HistoryEvent } from "./index";
 
 const H = (id: string) => ({ eventId: id, parentHash: GENESIS_PARENT, worldId: "w1", tickId: 1,
   engineVersion: "t", schemaVersion: SCHEMA_VERSION, timestamp: "2026-06-30T00:00:00.000Z" });
