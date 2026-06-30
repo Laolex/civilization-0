@@ -29,6 +29,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@civ/history':
+        specifier: workspace:*
+        version: link:../../packages/history
       '@civ/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
