@@ -134,6 +134,14 @@ export class WorldRepository {
       await append(client, transition);
 
       await client.query("COMMIT");
+      // Faithfulness Proof — WARN-ONLY in 1A (logs divergence, never fails the tick).
+      // Runs post-commit on this.pool (NOT the about-to-be-released client) with its own
+      // try/catch so it can never trigger the outer ROLLBACK of an already-committed tick.
+      try {
+        const { faithfulnessProof } = await import("@civ/history/src/verify");
+        const proof = await faithfulnessProof(this.pool, worldId);
+        if (!proof.ok) console.warn(`[history] faithfulness divergence world=${worldId}`, proof.divergences);
+      } catch (err) { console.warn("[history] faithfulness proof skipped:", err); }
     } catch (err) { await client.query("ROLLBACK"); throw err; }
     finally { client.release(); }
   }
