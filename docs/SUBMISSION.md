@@ -99,6 +99,16 @@ The deadline freezes a snapshot of the **public repo** — that exact commit is 
     WHERE t.zg_root_hash IS NOT NULL ORDER BY d.day DESC LIMIT 1"
   ```
 - [ ] **Demo video linked** and the demo **matches the code** (faking it = disqualification).
-- [ ] **Scheduler healthy** — `tail tick.log` shows a recent `result=success`. *(The Jun 29 12:00–18:00 UTC stall — 4 ticks lost to a transient 0G RPC `TIMEOUT` at broker creation — is fixed in this PR via retry-with-backoff in `@civ/zerog`. **Deploy note:** the live tick runs `tsx` from source at `/opt/civilization-0`, so the fix only takes effect after master is pulled into that checkout; it applies on the next tick, no restart needed.)*
+- [ ] **Scheduler healthy** — `tail tick.log` shows a recent `result=success`. *(The Jun 29 12:00–18:00 UTC stall — 4 ticks lost to a transient 0G RPC `TIMEOUT` at broker creation — is fixed in this PR: retry-with-backoff **plus** multi-endpoint RPC failover in `@civ/zerog`.)*
+
+**Deploy note (do these together — order matters):** the live tick runs `tsx` from source at `/opt/civilization-0`, so the fix only takes effect once master is pulled in. The RPC-failover change reads `ZG_EVM_RPC` as a **comma-separated list**, so the old code and the new `.env` value are incompatible — don't change `.env` before the code is deployed or the next tick breaks.
+```bash
+# after PR #8 is merged:
+cd /opt/civilization-0 && git pull
+# then enable failover (pick one):
+#   a) remove the ZG_EVM_RPC line from .env  → uses the new default (official + drpc fallback), or
+#   b) set ZG_EVM_RPC=https://evmrpc-testnet.0g.ai,https://0g-galileo-testnet.drpc.org
+# applies on the next scheduled tick — no restart needed.
+```
 - [ ] **Description** (above) pasted into the form.
 - [ ] One team, one project; no `.env` or secrets committed.
