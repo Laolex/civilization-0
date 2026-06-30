@@ -92,3 +92,23 @@ Runs one full citizen tick: Ada reasons via 0G Compute, the trace is archived on
 | `Failed to create 0G Compute ledger` | Wallet balance < 3.2 OG | Top up at https://faucet.0g.ai |
 | `transferFund skipped` warning | Non-fatal; provider may need acknowledgement | Usually safe to ignore; retry if inference fails |
 | ESM/import errors from compute SDK | Missing `--conditions require` | Always use the full `pnpm ... exec tsx --conditions require` command |
+
+## On-demand ticks (Advance-the-world-now button)
+
+The web button enqueues a `tick_request`; a 60s timer services it with one real
+`run-scheduler` tick. Deploy on the VPS:
+
+1. `git pull` in /opt/civilization-0 (carries the scripts + deploy/ units).
+2. **Prerequisite — share the lock.** Wrap the existing `civ0-scheduler.service`
+   ExecStart so both timers serialize on the same lock. Edit the unit:
+   `ExecStart=/usr/bin/flock -n /run/civ0-scheduler.lock <existing run-scheduler command>`
+   then `systemctl daemon-reload`.
+3. Install the drainer:
+   `cp packages/scheduler/deploy/civ0-tick-drainer.{service,timer} /etc/systemd/system/`
+   `systemctl daemon-reload && systemctl enable --now civ0-tick-drainer.timer`
+4. Verify: `journalctl -u civ0-tick-drainer -f` shows "no pending tick_request"
+   each minute; click the button → next cycle runs a tick and `tick.log` shows
+   `result=success`.
+
+`flock -n` means a cycle that finds a tick already running skips cleanly and
+retries next minute — no double-tick, no double OG spend.

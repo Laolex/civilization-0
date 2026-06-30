@@ -16,6 +16,7 @@ import { getCurrentUser } from "../../lib/auth";
 import { topCitizens, recent, population } from "../../lib/dashboard";
 import { LiveDot } from "../../components/LiveDot";
 import { WorldEventBox } from "../../components/WorldEventBox";
+import { AdvanceWorldButton } from "../../components/AdvanceWorldButton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,6 +131,7 @@ export default async function WorldPage() {
         </p>
       </header>
 
+      {showWorldEvent && <AdvanceWorldButton worldId="genesis" />}
       {showWorldEvent && <WorldEventBox worldId="genesis" />}
 
       {/* ── Instrument cluster: proof density, one panel divided into cells ── */}

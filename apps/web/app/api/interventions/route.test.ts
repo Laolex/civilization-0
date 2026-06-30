@@ -4,7 +4,11 @@ const user = { id: "u1", plan: "free", email: null, wallet: null, hasApiKey: fal
 vi.mock("../../../lib/auth", () => ({ getCurrentUser: vi.fn(async () => user) }));
 vi.mock("@civ/persistence/src/read", () => ({ readWorld: vi.fn(async () => ({ id: "w1", ownerId: "u1", name: "W", visibility: "private", populationCap: 50, population: 1 })) }));
 const enqueue = vi.fn(async (i) => ({ ...i, status: "pending", appliedDay: null, payload: i.payload }));
-vi.mock("@civ/persistence/src/intervention-write", () => ({ enqueueIntervention: (i: unknown) => enqueue(i), listInterventions: vi.fn(async () => []) }));
+vi.mock("@civ/persistence/src/intervention-write", () => ({
+  enqueueIntervention: (i: unknown) => enqueue(i),
+  listInterventions: vi.fn(async () => []),
+  lastTickRequestAtMs: vi.fn(async () => null),
+}));
 vi.mock("@civ/persistence/src/pool", () => ({ getPool: () => ({ query: async () => ({ rows: [{ world_id: "w1" }] }) }) }));
 
 import { POST, GET } from "./route";
@@ -126,5 +130,34 @@ describe("GET /api/interventions", () => {
   it("returns 400 when worldId missing", async () => {
     const res = await GET(new Request("http://x/api/interventions"));
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/interventions — tick_request", () => {
+  it("enqueues a tick_request (201) with empty payload and no target", async () => {
+    const res = await POST(req({ worldId: "w1", type: "tick_request" }));
+    expect(res.status).toBe(201);
+    const arg = enqueue.mock.calls[0][0];
+    expect(arg.type).toBe("tick_request");
+    expect(arg.payload).toEqual({});
+    expect(arg.targetCitizenId ?? null).toBeNull();
+  });
+  it("returns 401 when unauthenticated", async () => {
+    const { getCurrentUser } = await import("../../../lib/auth");
+    vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
+    const res = await POST(req({ worldId: "w1", type: "tick_request" }));
+    expect(res.status).toBe(401);
+  });
+  it("returns 403 for a non-owner", async () => {
+    const { getCurrentUser } = await import("../../../lib/auth");
+    vi.mocked(getCurrentUser).mockResolvedValueOnce({ id: "u2", plan: "free", email: null, wallet: null, hasApiKey: false });
+    const res = await POST(req({ worldId: "w1", type: "tick_request" }));
+    expect(res.status).toBe(403);
+  });
+  it("returns 429 within the cooldown window", async () => {
+    const iw = await import("@civ/persistence/src/intervention-write");
+    vi.mocked(iw.lastTickRequestAtMs).mockResolvedValueOnce(Date.now());
+    const res = await POST(req({ worldId: "w1", type: "tick_request" }));
+    expect(res.status).toBe(429);
   });
 });

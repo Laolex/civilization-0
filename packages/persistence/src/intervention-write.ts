@@ -39,6 +39,14 @@ export async function listInterventions(worldId: string, limit: number): Promise
   return r.rows.map(toIv);
 }
 
+export async function lastTickRequestAtMs(worldId: string): Promise<number | null> {
+  const r = await getPool().query(
+    `SELECT EXTRACT(EPOCH FROM created_at) * 1000 AS ms FROM interventions
+     WHERE world_id = $1 AND type = 'tick_request' ORDER BY created_at DESC LIMIT 1`,
+    [worldId]);
+  return r.rows[0] ? Number(r.rows[0].ms) : null;
+}
+
 export async function markInterventionApplied(id: string, day: number): Promise<void> {
   await getPool().query("UPDATE interventions SET status = 'applied', applied_day = $2 WHERE id = $1", [id, day]);
 }
