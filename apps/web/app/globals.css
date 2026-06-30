@@ -2788,6 +2788,7 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
    ══════════════════════════════════════════════════════════════════════════ */
 .whisper-box,
 .advance-world {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2796,6 +2797,7 @@ a.feed-actor:hover { color: var(--accent); border-bottom-color: var(--accent); }
   background: var(--panel);
   border: 1px solid var(--slate);
   border-radius: var(--radius-lg);
+  transition: border-color 0.2s var(--ease-out-quint), box-shadow 0.2s var(--ease-out-quint);
 }
 .advance-world { align-items: flex-start; gap: 8px; }
 
@@ -2838,6 +2840,8 @@ textarea.whisper-input { min-height: 64px; resize: vertical; line-height: 1.55; 
 /* Send / Set headline / Force dilemma / Advance = primary action (.btn-primary) */
 .whisper-actions button,
 .advance-world > button {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2851,10 +2855,12 @@ textarea.whisper-input { min-height: 64px; resize: vertical; line-height: 1.55; 
   background: var(--accent);
   border: 1px solid var(--accent);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s var(--ease-out-quint), box-shadow 0.2s ease, opacity 0.15s ease;
 }
 .whisper-actions button:hover:not(:disabled),
 .advance-world > button:hover:not(:disabled) { background: #6f97fb; transform: translateY(-1px); }
+.whisper-actions button:active:not(:disabled),
+.advance-world > button:active:not(:disabled) { transform: scale(0.97); }
 .whisper-actions button:disabled,
 .advance-world > button:disabled { opacity: 0.5; cursor: not-allowed; }
 .whisper-actions button:focus-visible,
@@ -2889,8 +2895,124 @@ textarea.whisper-input { min-height: 64px; resize: vertical; line-height: 1.55; 
 .dilemma-action input { accent-color: var(--accent); margin: 0; cursor: pointer; }
 
 /* Cost + status lines */
-.advance-cost { font-size: 11px; color: var(--muted); }
+.advance-cost { font-size: 11px; color: var(--muted); text-wrap: pretty; }
 .whisper-sent,
 .advance-status { margin: 0; font-size: 12.5px; color: var(--muted-hi); }
 .whisper-error,
 .advance-error { margin: 0; font-size: 12.5px; color: var(--down); }
+
+/* ── Intervention controls — craft + motion ("the world is alive") ───────────
+   State-conveying motion only; transform/opacity/filter; full reduced-motion
+   fallbacks. Echoes the system's breathing live-pulse and accent-as-signal. */
+
+/* Instrument "wakes" when you engage it: an accent hairline grows across the top. */
+.whisper-box::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: 18px; right: 18px; height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.85;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.32s var(--ease-out-quint);
+  pointer-events: none;
+}
+.whisper-box:focus-within::before { transform: scaleX(1); }
+.whisper-box:focus-within { border-color: var(--slate-hi); }
+
+/* Status + confirmation lines settle in; errors shake once. */
+.advance-statusline { min-height: 1.15em; }
+.advance-status,
+.whisper-sent { animation: iv-status-in 0.26s var(--ease-out-quint); }
+.advance-error,
+.whisper-error { animation: iv-shake 0.32s ease; }
+@keyframes iv-status-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes iv-shake { 0%, 100% { transform: translateX(0); } 30%, 70% { transform: translateX(3px); } 10%, 50%, 90% { transform: translateX(-3px); } }
+
+/* "Sent" gets a small live-blue pulse dot. */
+.whisper-sent { display: inline-flex; align-items: center; gap: 7px; }
+.whisper-sent::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 7px 0 rgba(79, 126, 248, 0.7);
+  animation: iv-pop 0.3s var(--ease-out-quint);
+}
+@keyframes iv-pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* Dilemma chip: selected state crossfades to accent. */
+.dilemma-action { transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease; }
+.dilemma-action:has(input:checked) { color: var(--fg); }
+.dilemma-action input { transition: transform 0.12s var(--ease-out-quint); }
+.dilemma-action:has(input:checked) input { transform: scale(1.12); }
+
+/* ── Advance button: the hero "tick propagating to 0G" sequence ───────────── */
+
+/* Idle breathes — the world is alive even when you haven't touched it. */
+.advance-world[data-state="idle"] > button { animation: iv-breath 2.6s ease-in-out infinite; }
+@keyframes iv-breath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 126, 248, 0); }
+  50%      { box-shadow: 0 0 18px -3px rgba(79, 126, 248, 0.5); }
+}
+
+/* A tick in flight sweeps an accent line along the panel's top edge. */
+.advance-sweep {
+  position: absolute;
+  top: -1px; left: 16px; right: 16px; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  background-size: 38% 100%;
+  background-repeat: no-repeat;
+  background-position: -38% 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.advance-world[data-state="posting"] .advance-sweep,
+.advance-world[data-state="queued"] .advance-sweep,
+.advance-world[data-state="running"] .advance-sweep {
+  opacity: 1;
+  animation: iv-sweep 1.15s linear infinite;
+}
+@keyframes iv-sweep { from { background-position: -38% 0; } to { background-position: 138% 0; } }
+
+/* "Ticking on 0G" animated ellipsis. */
+.advance-ellipsis { display: inline-block; width: 1.1em; text-align: left; }
+.advance-ellipsis::after { content: ""; animation: iv-dots 1.4s steps(1, end) infinite; }
+@keyframes iv-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75%, 100% { content: "..."; } }
+
+/* Arrival: a one-shot accent bloom on the panel as the new day settles in. */
+.advance-world[data-state="done"] { animation: iv-bloom 1s var(--ease-out-quint); }
+@keyframes iv-bloom {
+  0%   { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim), 0 0 26px -6px rgba(79, 126, 248, 0.55); }
+  100% { border-color: var(--slate); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+}
+
+/* Cooldown: the button reads as "cooling", with a depleting accent bar. */
+.advance-world[data-state="cooldown"] > button {
+  opacity: 1;
+  color: var(--muted-hi);
+  background: var(--panel);
+  border-color: var(--slate-hi);
+}
+.advance-world[data-state="cooldown"] > button::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0; height: 2px; width: 100%;
+  background: var(--accent);
+  transform: scaleX(var(--frac, 1));
+  transform-origin: left;
+  transition: transform 1s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .advance-world[data-state="idle"] > button,
+  .advance-sweep,
+  .advance-status, .whisper-sent, .advance-error, .whisper-error,
+  .whisper-sent::before,
+  .advance-world[data-state="done"] { animation: none !important; }
+  .advance-sweep { opacity: 0 !important; }
+  .whisper-box::before,
+  .advance-world[data-state="cooldown"] > button::after { transition: none; }
+  .advance-ellipsis::after { content: "…"; animation: none; }
+}

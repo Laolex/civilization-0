@@ -8,6 +8,7 @@ export function AdvanceWorldButton({ worldId }: { worldId: string }) {
   const [rowId, setRowId] = React.useState<string | null>(null);
   const [day, setDay] = React.useState<number | null>(null);
   const [cooldownMs, setCooldownMs] = React.useState(0);
+  const [cooldownTotal, setCooldownTotal] = React.useState(0);
 
   // Tick down the cooldown countdown.
   React.useEffect(() => {
@@ -49,7 +50,9 @@ export function AdvanceWorldButton({ worldId }: { worldId: string }) {
       });
       if (res.status === 429) {
         const j = await res.json().catch(() => ({}));
-        setCooldownMs(Number(j.retryAfterMs ?? 120000));
+        const total = Number(j.retryAfterMs ?? 120000);
+        setCooldownTotal(total);
+        setCooldownMs(total);
         setState("cooldown");
         return;
       }
@@ -61,17 +64,24 @@ export function AdvanceWorldButton({ worldId }: { worldId: string }) {
   }
 
   const busy = state === "posting" || state === "queued" || state === "running";
+  // Fraction of the cooldown still remaining; drives the depleting bar on the button.
+  const frac = cooldownTotal > 0 ? cooldownMs / cooldownTotal : 1;
+
   return (
-    <div className="advance-world">
+    <div className="advance-world" data-state={state} style={{ "--frac": frac } as React.CSSProperties}>
+      {/* tick-propagation sweep along the top edge while a tick is in flight */}
+      <span className="advance-sweep" aria-hidden="true" />
       <button onClick={advance} disabled={busy || state === "cooldown"}>
         Advance the world now
       </button>
       <span className="advance-cost mono">Forces a real tick · ~0.017 OG · 1 credit (free in preview)</span>
-      {state === "queued" && <p className="advance-status">Queued — a tick is on the way.</p>}
-      {state === "running" && <p className="advance-status">Ticking on 0G…</p>}
-      {state === "done" && <p className="advance-status">The world advanced to day {day}.</p>}
-      {state === "cooldown" && <p className="advance-status">Just ticked — wait {Math.ceil(cooldownMs / 1000)}s.</p>}
-      {state === "error" && <p className="advance-error">Couldn&apos;t request a tick — you may not have rights here.</p>}
+      <div className="advance-statusline" role="status" aria-live="polite">
+        {state === "queued" && <p className="advance-status">Queued — a tick is on the way.</p>}
+        {state === "running" && <p className="advance-status">Ticking on 0G<span className="advance-ellipsis" aria-hidden="true" /></p>}
+        {state === "done" && <p className="advance-status">The world advanced to day {day}.</p>}
+        {state === "cooldown" && <p className="advance-status">Just ticked — wait {Math.ceil(cooldownMs / 1000)}s.</p>}
+        {state === "error" && <p className="advance-error">Couldn&apos;t request a tick — you may not have rights here.</p>}
+      </div>
     </div>
   );
 }
