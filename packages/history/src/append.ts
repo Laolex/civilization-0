@@ -11,9 +11,12 @@ export async function append(
   tx: Executor,
   event: HistoryEvent,
 ): Promise<{ seq: number; eventId: EventId; eventHash: Hash; parentHash: Hash }> {
-  // FOR UPDATE serialises concurrent appends to the same world: the second tick blocks until
-  // the first commits, then reads the new tip and links correctly. The UNIQUE(world_id,parent_hash)
-  // index is the airtight backstop (it also covers the genesis empty-tip race, which locks nothing).
+  // FOR UPDATE serialises concurrent appends per world ONLY when tx is a single transaction
+  // (a PoolClient inside BEGIN — the persistTick path): the second tick blocks until the first
+  // commits, then reads the new tip and links correctly. On a bare Pool each statement may use a
+  // different connection and auto-commit, so the lock is best-effort there. The airtight anti-fork
+  // backstop in ALL cases is the UNIQUE(world_id,parent_hash) index (it also covers the genesis
+  // empty-tip race, which locks nothing).
   const tip = await tx.query(
     `SELECT event_hash FROM history_events WHERE world_id = $1 ORDER BY seq DESC LIMIT 1 FOR UPDATE`,
     [event.header.worldId],

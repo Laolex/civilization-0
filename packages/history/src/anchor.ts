@@ -41,12 +41,18 @@ export async function anchorTick(
     [anchorId, worldId, tickId, root, zgRootHash, zgTxHash],
   );
 
-  const anchorEvent: AnchorEvent = {
-    header: { eventId: anchorId, parentHash: GENESIS_PARENT, worldId, tickId,
-      engineVersion: opts.engineVersion ?? "civ0@dev", schemaVersion: SCHEMA_VERSION, timestamp: new Date().toISOString() },
-    merkleRoot: root, coveredEventIds, zgRootHash, zgTxHash,
-  };
-  await append(tx, anchorEvent); // append-only; Anchor is exempt from #2 but bound by #3
+  // Idempotent: the history_anchors row upserts (re-anchorable), but the chained AnchorEvent uses
+  // a deterministic id and history_events.event_id is UNIQUE — so only append it the first time.
+  // Re-anchoring a tick refreshes the anchors row without throwing or duplicating the chain event.
+  const existing = await tx.query(`SELECT 1 FROM history_events WHERE event_id = $1`, [anchorId]);
+  if (existing.rows.length === 0) {
+    const anchorEvent: AnchorEvent = {
+      header: { eventId: anchorId, parentHash: GENESIS_PARENT, worldId, tickId,
+        engineVersion: opts.engineVersion ?? "civ0@dev", schemaVersion: SCHEMA_VERSION, timestamp: new Date().toISOString() },
+      merkleRoot: root, coveredEventIds, zgRootHash, zgTxHash,
+    };
+    await append(tx, anchorEvent); // append-only; Anchor is exempt from #2 but bound by #3
+  }
 
   return { merkleRoot: root, zgRootHash, zgTxHash };
 }

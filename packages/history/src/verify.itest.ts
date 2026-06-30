@@ -1,8 +1,15 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import type { StorageProvider } from "@civ/storage";
 import { migrate, getPool, closePool } from "@civ/persistence";
 import { append } from "./append";
+import { anchorTick } from "./anchor";
 import { verifyWorldChain, faithfulnessProof } from "./verify";
 import { GENESIS_PARENT, SCHEMA_VERSION, type CognitiveTransition } from "./index";
+
+const fakeStorage: StorageProvider = {
+  name: "fake",
+  archive: async (_k: string, _d: unknown) => ({ rootHash: "0xROOT", txHash: "0xTX", ts: Date.now() }),
+};
 
 function ctFor(worldId: string, tick: number, actor: string, action: string): CognitiveTransition {
   return {
@@ -31,6 +38,7 @@ describe("verification proofs", () => {
   beforeAll(async () => { await migrate(); });
   afterEach(async () => {
     await getPool().query("DELETE FROM history_events WHERE world_id = 'wv'");
+    await getPool().query("DELETE FROM history_anchors WHERE world_id = 'wv'");
     await getPool().query("DELETE FROM decisions WHERE citizen_id IN (SELECT id FROM citizens WHERE world_id = 'wv')");
   });
   afterAll(async () => { await closePool(); });
@@ -39,6 +47,14 @@ describe("verification proofs", () => {
     await append(getPool(), ctFor("wv", 1, "c1", "work"));
     await append(getPool(), ctFor("wv", 2, "c1", "rest"));
     expect((await verifyWorldChain(getPool(), "wv")).ok).toBe(true);
+  });
+
+  it("verifyWorldChain stays ok across an interleaved AnchorEvent (transition→anchor→transition)", async () => {
+    await append(getPool(), ctFor("wv", 1, "c1", "work"));
+    await anchorTick(getPool(), fakeStorage, "wv", 1); // appends an AnchorEvent that advances the tip
+    await append(getPool(), ctFor("wv", 2, "c1", "rest")); // links to the anchor's hash
+    const r = await verifyWorldChain(getPool(), "wv");
+    expect(r.ok).toBe(true); // the full chain is authentic — filtering anchors out would falsely break it
   });
 
   it("verifyWorldChain fails after a tamper", async () => {

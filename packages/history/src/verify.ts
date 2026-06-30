@@ -8,9 +8,12 @@ export async function verifyWorldChain(
   tx: Executor,
   worldId: string,
 ): Promise<{ ok: boolean; brokenAt?: number; reason?: string }> {
+  // Verify the FULL per-world chain across ALL event kinds. append() links every event
+  // (CognitiveTransition AND AnchorEvent) to the true tip, so the authentic chain is the whole
+  // ordered sequence. Filtering to one kind would gap the linkage and false-report an honestly
+  // anchored chain (…T, Anchor, T…) as broken once HISTORY_ANCHOR is on. (Invariant #3.)
   const rows = await loadWorldEvents(tx, worldId);
-  const transitions = rows.filter((r) => eventKind(r.event) === "CognitiveTransition");
-  return verifyChain(transitions);
+  return verifyChain(rows);
 }
 
 /**
