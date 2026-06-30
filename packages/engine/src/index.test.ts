@@ -41,6 +41,15 @@ function setup() {
 }
 
 describe("runCitizenTick", () => {
+  it("returns the observation query and the available action set as pure values", async () => {
+    const { store, deps } = setup();
+    const result = await runCitizenTick(deps, "ada");
+    expect(typeof result.observation.query).toBe("string");
+    expect(result.observation.worldHeadline).toBe(store.getWorldState().headline);
+    expect(Array.isArray(result.availableActions)).toBe(true);
+    expect(result.availableActions.length).toBeGreaterThan(0);
+  });
+
   it("produces the full causality chain", async () => {
     const { store, storage, deps } = setup();
     const result = await runCitizenTick(deps, "ada");

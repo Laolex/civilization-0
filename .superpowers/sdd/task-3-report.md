@@ -1,52 +1,78 @@
-# Task 3 Report: SocialDrivers component + CausalChain social node
+# Task 3: sha256Hex + eventHash — Report
 
-## Status
-COMPLETE — all tests pass, typecheck clean, committed.
-
-## Commit
-- `75e8ecc` feat(web): render social-context drivers in the causal chain
-
-## TDD Evidence
-
-### RED (Step 2)
-```
-npx vitest run apps/web/components/SocialDrivers.test.tsx
-→ Test Files  1 failed (1)  — module "./SocialDrivers" not found
-```
-
-### Intermediate failure
-After first SocialDrivers.tsx implementation, the toggle test failed because `screen.getByText("Marcus invests steadily")` couldn't find text embedded inside the larger `<dd>` content (`trust 71 · influence 65 · "Marcus invests steadily"`). Fix: wrapped `{d.neighborText}` in a `<span>` so getByText can target it as a standalone element.
-
-### GREEN (Step 4)
-```
-npx vitest run apps/web/components/SocialDrivers.test.tsx
-→ Tests  2 passed (2)
-```
-
-### Final run (Step 8)
-```
-npx vitest run apps/web/components/SocialDrivers.test.tsx apps/web/components/CausalChain.test.tsx
-→ Test Files  2 passed (2)
-   Tests  5 passed (5)
-
-pnpm -r typecheck
-→ apps/web typecheck: Done  (clean)
-```
+## Summary
+Task 3 (Track B) implemented `sha256Hex` and `eventHash` for `@civ/history` package using TDD methodology. All tests passing, typecheck clean, commit successful.
 
 ## Files Changed
-- **Created** `apps/web/components/SocialDrivers.tsx` — reusable component with driver rows (strength × relevance → blended score + bar), org-driver line, and recompute reveal toggle
-- **Created** `apps/web/components/SocialDrivers.test.tsx` — 2 tests (row rendering, recompute toggle)
-- **Modified** `apps/web/components/CausalChain.tsx` — imported SocialDrivers; added "social" to ACCENT_KINDS; replaced single `{open && ...}` block with ternary that renders SocialDrivers for social nodes and generic detail grid for all others
-- **Modified** `apps/web/components/CausalChain.test.tsx` — added social node to chain fixture, added social-node click test
-- **Modified** `apps/web/app/globals.css` — appended `.sd-*` styles
+- `packages/history/src/hash.ts` — added imports (`node:crypto`, `./types`) at module top; appended `sha256Hex()` and `eventHash()` functions after `canonicalJSON()`
+- `packages/history/src/hash.test.ts` — appended test helper `fakeCT()` and test block `describe("eventHash", ...)` with 4 new test cases
 
-## Token Substitutions
-| Brief token | Status | Substitution |
-|-------------|--------|--------------|
-| `--fg`      | ✓ exists (`#e4e6ea`) | — |
-| `--muted`   | ✓ exists (`#7d8490`) | — |
-| `--accent`  | ✓ exists (`#4f7ef8`) | — |
-| `--org`     | ✓ exists (`#c792ea`, second `:root` block) | — |
-| `--line`    | ✗ NOT defined | Substituted with `--slate` (`#252a32`) — the hairline/border color used throughout |
+## RED Output (Step 2)
+```
+ ❯ packages/history/src/hash.test.ts (8 tests | 4 failed) 7ms
+   × eventHash > sha256Hex is a 0x-prefixed 64-hex digest 3ms
+     → sha256Hex is not a function
+   × eventHash > is deterministic for equal events 1ms
+     → eventHash is not a function
+   × eventHash > changes when the payload changes 0ms
+     → eventHash is not a function
+   × eventHash > changes when the parentHash changes 0ms
+     → sha256Hex is not a function
 
-No new color identities added. No new dependencies.
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+```
+
+## GREEN Output (Step 4)
+```
+ RUN  v2.1.9 /opt/civilization-0-history
+
+ ✓ packages/history/src/hash.test.ts (8 tests) 6ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+```
+
+## Test Summary
+- **Total:** 8 tests (4 existing `canonicalJSON` tests + 4 new `eventHash` tests)
+- **Result:** 8/8 PASS
+- **Scope:** 
+  - `sha256Hex("abc")` returns `0x` + 64 hex chars (SHA-256 deterministic)
+  - `eventHash()` is deterministic for identical `CognitiveTransition` instances
+  - `eventHash()` changes when payload changes (e.g., `reasoning` field)
+  - `eventHash()` changes when header changes (e.g., `parentHash`)
+
+## Typecheck
+```
+tsc --noEmit
+Done
+```
+Clean. No TypeScript errors.
+
+## Implementation Details
+
+### `sha256Hex(input: string): Hash`
+- Returns `"0x" + createHash("sha256").update(input, "utf8").digest("hex")`
+- Type: `Hash` (string alias from `./types`)
+- Used by `eventHash()` as the hash function
+
+### `eventHash(event: HistoryEvent): Hash`
+- Extracts `header` from event, remaining fields become `payload`
+- Hashes concatenation: `canon(header) + "\n" + canon(payload)`
+- Deterministic: identical events hash identically
+- Payload-sensitive: any change in non-header fields changes hash
+- Header-sensitive: any change in `EventHeader` fields (including `parentHash`) changes hash
+
+## Commit
+- **Commit SHA:** `a926bbb`
+- **Subject:** `feat(history): sha256Hex + eventHash over canonical header‖payload`
+- **Author:** laolex (shelfcron-co@outlook.com)
+- **Message:** No Co-Authored-By trailer, no AI attribution (per user feedback)
+
+## Concerns
+None. All success criteria met:
+- Tests RED then GREEN (8/8 pass)
+- Typecheck clean
+- Commit succeeded with correct message format
+- Implementation matches brief verbatim
+- Only hash.ts and hash.test.ts modified

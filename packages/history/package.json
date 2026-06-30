@@ -1,0 +1,19 @@
+{
+  "name": "@civ/history",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "build": "tsc -p tsconfig.json --noEmit" },
+  "dependencies": {
+    "@civ/shared": "workspace:*",
+    "@civ/engine": "workspace:*",
+    "@civ/storage": "workspace:*",
+    "@civ/zerog": "workspace:*",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@civ/persistence": "workspace:*",
+    "@types/pg": "^8.11.10"
+  }
+}

@@ -1,62 +1,77 @@
-# Task 4 Report: Verify page shows social drivers
+# Task 4: merkleRoot Implementation Report
 
 ## Status
-COMPLETE — all tests pass, typecheck clean, committed.
+**COMPLETE**. All steps completed successfully.
 
-## Commit
-- `5d71278` feat(web): show social drivers on the verify page
+## Files Modified
+- `packages/history/src/hash.ts` — appended `merkleRoot(hashes: Hash[]): Hash` function (18 lines)
+- `packages/history/src/hash.test.ts` — appended `merkleRoot` import and 3-test block (15 lines)
 
-## TDD Evidence
-
-### RED (before implementation)
-Added test `"shows social drivers after successful fetch with socialDrivers"` to `VerifyOnZeroG.test.tsx`. Ran focused test suite:
+## RED Phase
 ```
+pnpm vitest run packages/history/src/hash.test.ts
+
+ ❯ packages/history/src/hash.test.ts (11 tests | 3 failed) 9ms
+   × merkleRoot > is deterministic 3ms
+     → merkleRoot is not a function
+   × merkleRoot > is order-sensitive 1ms
+     → merkleRoot is not a function
+   × merkleRoot > returns the single leaf unchanged 0ms
+     → merkleRoot is not a function
+
 Test Files  1 failed (1)
-      Tests  1 failed | 4 passed (5)
-```
-`findByText("Marcus Vale")` timed out — component had no social driver rendering.
-
-### GREEN (after implementation)
-After modifying `VerifyOnZeroG.tsx` and appending CSS:
-```
-Test Files  1 passed (1)
-      Tests  5 passed (5)
+Tests  3 failed | 8 passed (11)
 ```
 
-## Changes Made
+Confirmed: 3 tests failing (8 pre-existing passing), error "merkleRoot is not a function" as expected.
 
-### `apps/web/components/VerifyOnZeroG.tsx`
-- Added imports: `SocialDrivers` from `./SocialDrivers`; `SocialDriverView`, `OrgDriverView` from `../lib/types`
-- Extended `State` "ok" excerpt type to include `socialQuery?: string | null; socialDrivers?: SocialDriverView[]; orgDriver?: OrgDriverView | null`
-- Extended `j.excerpt` parse type with the same optional fields
-- Added `<div className="verify-social">` block with `<SocialDrivers>` after the `<pre>` JSON dump, guarded by `Array.isArray && length > 0`
-- Raw `<pre>` JSON dump preserved
+## GREEN Phase
+```
+pnpm vitest run packages/history/src/hash.test.ts
 
-### `apps/web/components/VerifyOnZeroG.test.tsx`
-- Added one new test asserting `findByText("Marcus Vale")` after clicking Verify when excerpt contains `socialDrivers` — matched existing `vi.stubGlobal("fetch", vi.fn(...))` pattern
+ ✓ packages/history/src/hash.test.ts (11 tests) 5ms
 
-### `apps/web/app/globals.css`
-- Appended `.verify-social` and `.verify-social-head` rules using `--line`, `--accent` Observatory tokens
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+```
+
+Confirmed: All 11 tests passing.
 
 ## Typecheck
-`pnpm -r typecheck` → clean (no errors)
+```
+pnpm -r typecheck
+Scope: 14 of 15 workspace projects
+apps/web typecheck$ tsc --noEmit
+apps/web typecheck: Done
+```
+
+Clean. No type errors.
+
+## Implementation Details
+The `merkleRoot` function:
+- Returns `sha256Hex("")` for empty array
+- Duplicates the last hash on odd-length levels
+- Builds the tree bottom-up via iterative hashing
+- Returns the single leaf unchanged (level.length === 1)
+- Uses existing `sha256Hex` and `Hash` type from the module
+
+## Test Coverage
+Three new tests validate:
+1. **Determinism** — same input hashes yield same root
+2. **Order-sensitivity** — different order produces different root
+3. **Single-leaf identity** — single hash returns unchanged
+
+All three tests pass, confirming the spec.
+
+## Commit
+```
+git -c user.name="laolex" -c user.email="shelfcron-co@outlook.com" commit -m "feat(history): merkleRoot over event hashes"
+[feat/history-event-engine b95b5b2] feat(history): merkleRoot over event hashes
+ 2 files changed, 31 insertions(+)
+```
+
+**Commit SHA:** b95b5b2  
+**Subject:** feat(history): merkleRoot over event hashes
 
 ## Concerns
-None. Implementation is straightforward; the `SocialDrivers` component is reused as-is.
-
-## Fix: Undefined CSS token + test teardown
-
-### Token fix
-In `apps/web/app/globals.css` line 2757, `.verify-social` rule used undefined `var(--line)`, causing border to silently fail rendering. Changed to `var(--slate)` (the defined hairline token, same as `.sd-raw` above it).
-
-### Test teardown
-In `apps/web/components/VerifyOnZeroG.test.tsx`, found existing `afterEach(() => { vi.restoreAllMocks(); })` (lines 6-8). Added `vi.unstubAllGlobals()` call to properly clean up `vi.stubGlobal("fetch", ...)` stubs in tests.
-
-### Verification
-```
-npx vitest run apps/web/components/VerifyOnZeroG.test.tsx
- ✓ apps/web/components/VerifyOnZeroG.test.tsx (5 tests) 108ms
- Test Files  1 passed (1)
-      Tests  5 passed (5)
-```
-`pnpm -r typecheck` → clean (no errors)
+None. Implementation matches brief exactly, tests pass, types clean, commit uses correct author and message format (no Co-Authored-By, no AI attribution).

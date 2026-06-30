@@ -1,48 +1,41 @@
-# Task 1 Report: Shared types + engine mirrors socialDrivers into decision.meta
+# Task 1 Report: Scaffold the `@civ/history` package + Phase 1A event types
 
 **Status:** DONE
-**Commit:** `5371a8d feat(engine): mirror socialDrivers into decision.meta for UI`
-**Branch:** `feat/graphrag-neighbor-retrieval`
+**Commit:** `90e6263 feat(history): scaffold @civ/history package + Phase 1A event types`
+**Branch:** `feat/history-event-engine`
 
-## TDD Evidence
+## What was implemented
+A new workspace package `@civ/history` containing only the frozen Phase 1A type
+surface and constants — no logic yet. Every later task (build, canon, append,
+fold, project, CLI, anchor) consumes these types.
 
-### RED (before implementation)
-```
-FAIL  packages/engine/src/graph-drivers.test.ts
-  × engine social retrieval > mirrors socialDrivers into decision.meta for the UI
-    AssertionError: expected false to be true // Object.is equality
-    (result.decision.meta?.socialDrivers was undefined → Array.isArray returned false)
-```
+### Files created
+- `packages/history/package.json` — `@civ/history`, ESM, deps on `@civ/shared`,
+  `@civ/engine`, `@civ/storage`, `@civ/zerog`, `pg` (+ `@types/pg`).
+- `packages/history/tsconfig.json` — extends base, `include: ["src","scripts"]`.
+- `packages/history/src/types.ts` — the four-invariants doc comment (verbatim,
+  binding), `SCHEMA_VERSION=1`, `CANON_VERSION="jcs-1"`, `GENESIS_PARENT=0x0…64`,
+  and all Phase 1A types: `EventHeader`, `Observation`, `ExecutionContext`,
+  `WorldDelta`, `WeightedMemory/Belief`, `CandidateEvaluation`, `BeliefDelta`,
+  `CognitiveTransition` (candidates/beliefDelta typed `… | null`, null in 1A),
+  `AnchorEvent`, `HistoryEvent` union, `eventKind()` discriminator, `WorldState`
+  (fold output), `ExplainView` (project output; candidates/beliefDelta render
+  `… | "unavailable"` per Invariant #1).
+- `packages/history/src/index.ts` — barrel re-exporting `./types`.
+- `packages/history/src/types.test.ts` — 2 tests (version/genesis pins; eventKind
+  discrimination).
 
-### GREEN (after implementation)
-```
-✓ packages/engine/src/graph-drivers.test.ts (4 tests) 6ms
-  All 4 tests pass: existing trace tests + new meta mirror test
-```
+### Files modified
+- `tsconfig.base.json` — added `"@civ/history": ["packages/history/src"]` to paths.
+- `pnpm-lock.yaml` — new package wired into the workspace.
 
-### Typecheck
-```
-pnpm -r typecheck → clean (all 13 workspace projects)
-```
+## Verification (controller-run)
+- Unit test: `pnpm vitest run packages/history/src/types.test.ts` → **2/2 passing**, output pristine.
+- Typecheck: `pnpm -r typecheck` → **clean across 14 workspace projects**.
 
-## Changes Made
-
-### `packages/shared/src/index.ts`
-- Added `SocialDriver` interface (id, name, relationshipStrength, relevance, blendedScore, trust, influence, neighborText)
-- Added `OrgDriver` interface (id, name, action?, reasoning?)
-- Extended `ExecutionMeta` with `socialDrivers?: SocialDriver[]`, `socialQuery?: string`, `orgDriver?: OrgDriver`
-
-### `packages/engine/src/index.ts`
-- After `orgContext` retrieval (line ~68), compute `socialDrivers`, `orgDriver`, and `socialQuery` ONCE as shared consts
-- In `decision` object: spread `result.meta` and conditionally merge socialDrivers/socialQuery (only if neighbors exist) and orgDriver (only if orgContext exists)
-- In trace `drivers` block: replaced inline mapping literals with the precomputed consts (single source of truth, no duplication)
-
-### `packages/engine/src/graph-drivers.test.ts`
-- Added new test "mirrors socialDrivers into decision.meta for the UI"
-- Reuses existing `setup()` helper (already produces a tick with neighbors via `store.setNeighborCandidates`)
-- Asserts: `result.decision.meta.socialDrivers` is a non-empty array, each driver has the expected shape, and `socialQuery` is a string
-
-## Constraints Verified
-- Additive only: a tick with zero neighbors (no graphRetriever wired) still passes the existing "degrades" test — no `socialDrivers` key is added to meta when `socialDrivers.length === 0`
-- r2 rounding applied once in the shared const, reused in both meta and trace
-- 0G trace shape unchanged (same keys, now sourced from shared consts)
+## Notes / concerns
+- The implementer subagent did not write this report file (it left stale prior-task
+  content); this report was reconstructed by the controller from the verified
+  commit + working tree. Implementation itself is faithful to the plan.
+- `SocialDriver` is imported from `@civ/shared` (added by prior GraphRAG work) —
+  reused, not redefined.

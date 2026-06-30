@@ -1,76 +1,69 @@
-### Task 4: Verify page shows social drivers
+### Task 4: `merkleRoot` — Track B
+
+**Package:** `@civ/history`. **Depends on:** Tasks 2–3 (`sha256Hex` exists in `packages/history/src/hash.ts`).
 
 **Files:**
-- Modify: `apps/web/components/VerifyOnZeroG.tsx` (type the excerpt's socialDrivers, render `SocialDrivers`)
-- Modify: `apps/web/components/VerifyOnZeroG.test.tsx` (assert drivers render)
+- Modify (append): `packages/history/src/hash.ts`
+- Modify (append): `packages/history/src/hash.test.ts`
 
 **Interfaces:**
-- Consumes: `/api/verify` excerpt `{ decision, verified, socialQuery, socialDrivers, orgDriver }` (already returned), `SocialDrivers` component (Task 3), `SocialDriverView`/`OrgDriverView` types.
+- Produces: `merkleRoot(hashes: Hash[]): Hash` — binary merkle, duplicate-last on odd,
+  `sha256Hex(left + right)` per node; empty → `sha256Hex("")`; single → that leaf.
 
-- [ ] **Step 1: Write the failing test**
+This is TDD. Append only — do not rewrite existing Task 2/3 content.
 
-In `apps/web/components/VerifyOnZeroG.test.tsx`, add a test that mocks `fetch` to return an excerpt with `socialDrivers` and asserts a driver name appears after clicking "Verify on 0G". Match the file's existing fetch-mock style; the shape to return:
-
+#### Step 1: Append the failing test to `packages/history/src/hash.test.ts`
 ```ts
-const excerpt = {
-  decision: { action: "invest", targetId: "marcus" }, verified: true,
-  socialQuery: "who do I trust on risk?",
-  socialDrivers: [{ id: "marcus", name: "Marcus Vale", relationshipStrength: 0.68, relevance: 0.46, blendedScore: 0.31, trust: 71, influence: 65, neighborText: "steady" }],
-  orgDriver: null,
-};
-// fetch resolves { ok: true, key: "k", bytes: 100, excerpt }
-// after clicking "Verify on 0G": expect(await screen.findByText("Marcus Vale")).toBeDefined();
+import { merkleRoot } from "./hash";
+
+describe("merkleRoot", () => {
+  it("is deterministic", () => {
+    const hs = [sha256Hex("a"), sha256Hex("b"), sha256Hex("c")];
+    expect(merkleRoot(hs)).toBe(merkleRoot(hs));
+  });
+  it("is order-sensitive", () => {
+    expect(merkleRoot([sha256Hex("a"), sha256Hex("b")]))
+      .not.toBe(merkleRoot([sha256Hex("b"), sha256Hex("a")]));
+  });
+  it("returns the single leaf unchanged", () => {
+    const h = sha256Hex("only");
+    expect(merkleRoot([h])).toBe(h);
+  });
+});
+```
+`sha256Hex` is already imported from Task 3 — reuse that import; add only `import { merkleRoot } from "./hash";`.
+
+#### Step 2: Run to verify it fails
+`pnpm vitest run packages/history/src/hash.test.ts`
+Expected: FAIL ("merkleRoot is not a function"). Capture RED output.
+
+#### Step 3: Append the implementation to `packages/history/src/hash.ts`
+```ts
+export function merkleRoot(hashes: Hash[]): Hash {
+  if (hashes.length === 0) return sha256Hex("");
+  let level = hashes.slice();
+  while (level.length > 1) {
+    const next: Hash[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const left = level[i]!;
+      const right = i + 1 < level.length ? level[i + 1]! : left; // duplicate last on odd
+      next.push(sha256Hex(left + right));
+    }
+    level = next;
+  }
+  return level[0]!;
+}
 ```
 
-> If `VerifyOnZeroG.test.tsx` does not exist or does not mock fetch, create the test with a `vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, key: "k", bytes: 100, excerpt }) }))` setup and `vi.unstubAllGlobals()` teardown.
+#### Step 4: Run to verify it passes
+`pnpm vitest run packages/history/src/hash.test.ts`
+Expected: PASS (11 tests total). Then `pnpm -r typecheck` — confirm clean.
 
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npx vitest run apps/web/components/VerifyOnZeroG.test.tsx`
-Expected: FAIL — drivers not rendered.
-
-- [ ] **Step 3: Render drivers in VerifyOnZeroG**
-
-In `apps/web/components/VerifyOnZeroG.tsx`:
-- Import: `import { SocialDrivers } from "./SocialDrivers";` and `import type { SocialDriverView, OrgDriverView } from "../lib/types";`
-- Extend the `State` "ok" excerpt type and the `j.excerpt` parse type to include `socialQuery?: string | null; socialDrivers?: SocialDriverView[]; orgDriver?: OrgDriverView | null`.
-- In the `s.status === "ok"` block, after the `<pre>` excerpt, add (only when drivers exist):
-
-```tsx
-          {Array.isArray(s.excerpt.socialDrivers) && s.excerpt.socialDrivers.length > 0 && (
-            <div className="verify-social">
-              <div className="verify-social-head mono">social context · graph-reasoned</div>
-              <SocialDrivers
-                drivers={s.excerpt.socialDrivers}
-                socialQuery={s.excerpt.socialQuery ?? undefined}
-                orgDriver={s.excerpt.orgDriver ?? undefined}
-              />
-            </div>
-          )}
-```
-
-(Keep the existing `<pre>` JSON dump — it remains the raw proof; the `SocialDrivers` block is the readable layer.)
-
-- [ ] **Step 4: Add minimal style**
-
-Append to `apps/web/app/globals.css`:
-
-```css
-.verify-social { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-.verify-social-head { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
-```
-
-- [ ] **Step 5: Run test to verify it passes**
-
-Run: `npx vitest run apps/web/components/VerifyOnZeroG.test.tsx && pnpm -r typecheck`
-Expected: PASS + clean.
-
-- [ ] **Step 6: Commit**
-
+#### Step 5: Commit (NO Co-Authored-By, NO AI attribution)
 ```bash
-git add apps/web/components/VerifyOnZeroG.tsx apps/web/components/VerifyOnZeroG.test.tsx apps/web/app/globals.css
-git commit -m "feat(web): show social drivers on the verify page"
+git add packages/history/src/hash.ts packages/history/src/hash.test.ts
+git -c user.name="laolex" -c user.email="shelfcron-co@outlook.com" commit -m "feat(history): merkleRoot over event hashes"
 ```
 
----
-
+#### Report
+Write your full report to `/opt/civilization-0-history/.superpowers/sdd/task-4-report.md` (RED/GREEN evidence, files changed, test summary, concerns). Then reply ≤15 lines: Status, commit SHA+subject, one-line test summary, concerns, report path.

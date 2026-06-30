@@ -4,6 +4,10 @@ import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
 import { readWorldView, type WorldView } from "./read";
+// Deep src imports: @civ/history's barrel only re-exports ./types, so build/append come from src.
+import { buildCognitiveTransition } from "@civ/history/src/build";
+import { append } from "@civ/history/src/append";
+import { GENESIS_PARENT } from "@civ/history/src/types";
 
 const envNum = (v: string | undefined, d: number) => { const n = Number(v ?? d); return Number.isFinite(n) ? n : d; };
 const NEIGHBOR_CANDIDATE_LIMIT = envNum(process.env.NEIGHBOR_CANDIDATE_LIMIT, 5);
@@ -106,7 +110,47 @@ export class WorldRepository {
            ON CONFLICT (citizen_id,other_id) DO UPDATE SET trust=$3,friendship=$4,influence=$5`,
           [rel.citizenId, rel.otherId, rel.trust, rel.friendship, rel.influence]);
 
+      // ── @civ/history shadow append (Invariant #2: same transaction as the decision) ──
+      // append() throws on failure, so the existing catch{ROLLBACK} undoes BOTH the decision
+      // and the transition — no orphan in either direction.
+      // Fail loudly rather than misattribute the transition to a phantom world: if the citizen
+      // row vanished mid-tick, throwing rolls the whole tick back (Invariant #2) instead of
+      // appending to a chain that no real decision can be reconciled against.
+      const wr = await client.query(`SELECT world_id FROM citizens WHERE id = $1`, [citizenId]);
+      if (!wr.rows[0]?.world_id) throw new Error(`persistTick: no world_id for citizen ${citizenId}`);
+      const worldId: string = wr.rows[0].world_id;
+      const retrievedMemories = store.getDecisionMemories(d.id).map((dm) => ({ id: dm.memoryId, weight: dm.weight }));
+      const retrievedBeliefs = store.getDecisionBeliefs(d.id).map((db) => ({ id: db.beliefId, weight: db.weight }));
+      const transition = buildCognitiveTransition({
+        result: { decision: d, event: e, observation: result.observation, availableActions: result.availableActions },
+        worldId,
+        engineVersion: process.env.ENGINE_VERSION ?? "civ0@dev",
+        timestamp: new Date().toISOString(),
+        parentHash: GENESIS_PARENT, // append() overwrites with the live tip
+        newEventId: () => `ct-${d.id}`,
+        retrievedMemories,
+        retrievedBeliefs,
+      });
+      await append(client, transition);
+
       await client.query("COMMIT");
+      // Faithfulness Proof — WARN-ONLY in 1A (logs divergence, never fails the tick).
+      // Runs post-commit on this.pool (NOT the about-to-be-released client) with its own
+      // try/catch so it can never trigger the outer ROLLBACK of an already-committed tick.
+      try {
+        const { faithfulnessProof } = await import("@civ/history/src/verify");
+        const proof = await faithfulnessProof(this.pool, worldId);
+        if (!proof.ok) console.warn(`[history] faithfulness divergence world=${worldId}`, proof.divergences);
+      } catch (err) { console.warn("[history] faithfulness proof skipped:", err); }
+      // Best-effort 0G anchor — OFF by default (gated by HISTORY_ANCHOR=1) so the live 2h
+      // scheduler does not spend OG until explicitly enabled. Post-commit, never blocks the tick.
+      if (process.env.HISTORY_ANCHOR === "1") {
+        try {
+          const { anchorTick } = await import("@civ/history/src/anchor");
+          const { createZeroGStorage, loadZeroGConfig } = await import("@civ/zerog");
+          await anchorTick(this.pool, createZeroGStorage(loadZeroGConfig(process.env)), worldId, d.day);
+        } catch (err) { console.warn("[history] anchor skipped:", err); }
+      }
     } catch (err) { await client.query("ROLLBACK"); throw err; }
     finally { client.release(); }
   }
