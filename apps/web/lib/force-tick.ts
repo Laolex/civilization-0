@@ -1,6 +1,9 @@
 import { canIntervene } from "@civ/persistence/src/intervention-authz";
 
-export const FORCE_TICK_COOLDOWN_MS = Number(process.env.FORCE_TICK_COOLDOWN_MS ?? 120_000);
+const COOLDOWN_ENV = Number(process.env.FORCE_TICK_COOLDOWN_MS);
+// Guard against a non-numeric env value: NaN comparisons are always false,
+// which would silently disable the cooldown entirely.
+export const FORCE_TICK_COOLDOWN_MS = Number.isFinite(COOLDOWN_ENV) ? COOLDOWN_ENV : 120_000;
 
 export interface ForceTickCost { costCredits: number; estOG: number; }
 
