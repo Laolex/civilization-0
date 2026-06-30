@@ -32,3 +32,13 @@ describe("fold", () => {
     expect(ws.latest.get(worldStateKey("w1", 1, "c1"))?.selectedAction).toBe("rest");
   });
 });
+
+describe("worldStateKey", () => {
+  it("does not collide when ids contain the printable ':' delimiter", () => {
+    // distinct triples that would have collided under a ":"-joined key
+    expect(worldStateKey("w:1", 1, "c1")).not.toBe(worldStateKey("w", 1, "1:c1"));
+  });
+  it("rejects ids containing the control separator", () => {
+    expect(() => worldStateKey("w\x1F1", 1, "c1")).toThrow(/U\+001F/);
+  });
+});
