@@ -1,0 +1,11 @@
+[Unit]
+Description=Civilization-0 on-demand tick drainer (services tick_request rows)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/civilization-0
+EnvironmentFile=/opt/civilization-0/.env
+EnvironmentFile=/etc/civ0-scheduler.env
+ExecStart=/opt/civilization-0/packages/scheduler/scripts/drain-if-requested.sh
+ExecStopPost=/opt/civilization-0/packages/scheduler/scripts/tick-log.sh
