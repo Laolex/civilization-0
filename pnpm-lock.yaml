@@ -87,6 +87,9 @@ importers:
         specifier: ^8.13.1
         version: 8.22.0
     devDependencies:
+      '@civ/persistence':
+        specifier: workspace:*
+        version: link:../persistence
       '@types/pg':
         specifier: ^8.11.10
         version: 8.20.0

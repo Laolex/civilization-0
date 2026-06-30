@@ -12,5 +12,8 @@
     "@civ/zerog": "workspace:*",
     "pg": "^8.13.1"
   },
-  "devDependencies": { "@types/pg": "^8.11.10" }
+  "devDependencies": {
+    "@civ/persistence": "workspace:*",
+    "@types/pg": "^8.11.10"
+  }
 }
