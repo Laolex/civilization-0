@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { ActionType, Memory } from "@civ/shared";
 import type { Intervention } from "@civ/persistence/src/intervention-write";
-import { drainInterventions, makeWhisperApplier, makeWorldEventApplier, makeDilemmaApplier, type DrainDeps } from "./interventions";
+import { drainInterventions, makeWhisperApplier, makeWorldEventApplier, makeDilemmaApplier, makeTickRequestApplier, type DrainDeps } from "./interventions";
 
 function ivOf(over: Partial<Intervention> = {}): Intervention {
   return { id: "iv1", worldId: "w1", userId: "u1", type: "whisper",
@@ -216,5 +216,29 @@ describe("drainInterventions", () => {
     const apply = makeDilemmaApplier(repo, { embed: () => [1] });
     await expect(apply(ivOf({ id: "d4", type: "dilemma", worldId: "w1", targetCitizenId: "ada",
       payload: { text: "x", actions: ["work", "quit_job"] } }), 3)).rejects.toThrow();
+  });
+});
+
+describe("tick_request", () => {
+  it("makeTickRequestApplier is a no-op that resolves", async () => {
+    const apply = makeTickRequestApplier();
+    await expect(apply({ id: "iv1", worldId: "w1", userId: "u1", type: "tick_request",
+      targetCitizenId: null, payload: {}, status: "pending", appliedDay: null }, 5)).resolves.toBeUndefined();
+  });
+
+  it("drainInterventions routes tick_request to applyTickRequest and marks it applied", async () => {
+    const marked: string[] = [];
+    const applyTickRequest = vi.fn(async () => {});
+    const res = await drainInterventions({
+      pending: async () => [{ id: "t1", worldId: "w1", userId: "u1", type: "tick_request",
+        targetCitizenId: null, payload: {}, status: "pending", appliedDay: null }],
+      applyWhisper: async () => {},
+      applyTickRequest,
+      markApplied: async (id) => { marked.push(id); },
+      markFailed: async () => {},
+    }, 9);
+    expect(applyTickRequest).toHaveBeenCalledOnce();
+    expect(res.applied).toBe(1);
+    expect(marked).toEqual(["t1"]);
   });
 });

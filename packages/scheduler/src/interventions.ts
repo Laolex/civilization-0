@@ -9,6 +9,7 @@ export interface DrainDeps {
   applyWhisper(iv: Intervention, day: number): Promise<void>;
   applyWorldEvent?(iv: Intervention, day: number): Promise<void>;
   applyDilemma?(iv: Intervention, day: number): Promise<void>;
+  applyTickRequest?(iv: Intervention, day: number): Promise<void>;
   markApplied(id: string, day: number): Promise<void>;
   markFailed(id: string): Promise<void>;
 }
@@ -20,6 +21,7 @@ export async function drainInterventions(deps: DrainDeps, day: number): Promise<
       iv.type === "whisper" ? deps.applyWhisper :
       iv.type === "world_event" ? deps.applyWorldEvent :
       iv.type === "dilemma" ? deps.applyDilemma :
+      iv.type === "tick_request" ? deps.applyTickRequest :
       undefined;
     if (!applier) continue; // unknown types left pending for later sub-projects
     try {
@@ -107,4 +109,9 @@ export function makeDilemmaApplier(
       summary: text, embedding: embedder.embed(text), pinned: true,
     });
   };
+}
+
+/** A tick_request's only job is to cause the scheduler run; applying it is a no-op. */
+export function makeTickRequestApplier() {
+  return async (_iv: Intervention, _day: number): Promise<void> => {};
 }
