@@ -59,22 +59,42 @@ Both halves — verifiable compute *and* permanent, keyless-recoverable storage 
 
 ---
 
-## 90-second demo cut (R32 — judged, optimize for the rubric)
+## What's new since the group stage
 
-Tighter than the 2-minute `DEMO.md` cut. Lead with the moat; the world is the proof.
+The group-stage snapshot locked **Jun 24**. Everything below landed after that — visible iteration is what the R32 rubric rewards:
+
+| Since group stage | What it adds | Where to see it |
+|---|---|---|
+| **Player interventions** (whisper + dilemmas) | A human can **step into the autonomous world** — whisper a ≤280-char suggestion to a citizen, or pose a forced-choice dilemma. It becomes an input the citizen weighs on its next tick; it doesn't override the reasoning. Persisted with per-world authorization. | `/citizens/[id]` → *Whisper* / *Dilemma* box |
+| **GraphRAG social reasoning** | Each decision is now partly driven by the citizens it trusts (`trust × relevance → blended score`). The raw inputs are archived with the trace, so anyone can **recompute the scores from scratch** — verifiable retrieval, not a stored answer. | causal chain *Social* node; `/map` → click a citizen → **Replay last decision** lights the exact edges retrieved |
+| **Reliability hardening** | The autonomous loop survived a 6h 0G-RPC wobble that previously froze it: **retry-with-backoff** on transient RPC timeouts + **multi-endpoint RPC failover**. | `tick.log` ticking clean; `@civ/zerog` retry/failover (+16 tests) |
+
+These turn the pitch from "a world that runs itself" into "a world that runs itself, **that you can steer, and still verify** — even the part you steered."
+
+---
+
+## R32 demo script (v2 — built around what's new)
+
+~2 minutes. Same spine as `DEMO.md` but it now shows the **intervention → social reasoning → verify** loop end-to-end. Lead with the moat; the world is the proof.
 
 | Time | Screen | Say |
 |---|---|---|
-| 0:00–0:12 | Landing `/` — living world, proof strip idle | "Autonomous agents decide things right now and nobody can audit why. This is the provenance layer for agentic AI, live on 0G — not a mockup, a society that's run itself for **87 days**." |
-| 0:12–0:32 | `/world` — scroll feed, hover a row so **0G Compute ✓ / 0G Storage ✓** light. Land on a human row (e.g. an `invest`/`start_company`). | "It ticks itself on 0G every two hours. Every event carries two stamps — reasoned on 0G Compute, recorded on 0G Storage. Take this one: why did it decide that? That's where AI normally goes dark." |
-| 0:32–0:52 | Click the citizen → causal chain renders: Memory → Belief → **Social** → 0G Compute → Decision → 0G Storage | "The whole chain — the memory it retrieved, the belief it fed, the *brain-weighted* inputs that actually drove the call, reasoned on 0G with a cryptographic verified-true. Not a log of what happened — a record of what moved the decision." |
-| 0:52–1:18 | Back → **click that row's "0G Storage ✓" badge** → `/verify/<root>` resolves live | "Now the part that matters. I'm not loading our database. That badge is a hash, and this pulls the record straight back out of 0G Storage by that hash alone — no private key, no trusting us. Anyone runs the exact same call." |
-| 1:18–1:30 | Recovered panel: action, reasoning, `verified: true`, root + tx | "Recovered from the network itself, verified. Rip out 0G and none of this exists — not the reasoning, not the proof. That's the whole point." |
+| 0:00–0:15 | Landing `/` — living world, proof strip idle | "Autonomous agents decide things right now and nobody can audit why. This is the provenance layer for agentic AI, live on 0G — not a mockup, a society that's run itself for **87 days**." |
+| 0:15–0:33 | `/world` — scroll feed, hover a row so **0G Compute ✓ / 0G Storage ✓** light | "It ticks itself on 0G every two hours. Every event carries two stamps — reasoned on 0G Compute, recorded on 0G Storage. But here's what's new since the group stage: you're not just watching." |
+| 0:33–0:52 | Open a citizen → **Whisper box**. Type a suggestion (e.g. *"Marcus can't be trusted — be careful"*). Send → "*{name} will hear this on their next day.*" | "I can step in. I whisper a suggestion to this citizen — not a command, an *input*. They'll weigh it, on 0G, like any other memory. So: does it actually move the decision — and can I prove it did?" |
+| 0:52–1:18 | After the next tick, the citizen's **causal chain** → the **Social node** shows neighbors + my whisper, weighted `trust × relevance`. Hit "recompute yourself". | "Here's the chain for the call they just made. The social node names exactly who — and what — drove it, each weight shown. My whisper is in there, weighed against what they already believed. And this isn't 'trust our number': you can recompute every score from the raw inputs we archived." |
+| 1:18–1:35 | `/map` → click that citizen → **Replay last decision** lights the retrieved relationship edges | "On the map, replaying that decision lights up the exact relationships the reasoning pulled — the retrieval itself, made visible." |
+| 1:35–1:58 | Back to the live feed → **click that decision's "0G Storage ✓" badge** → `/verify/<root>` resolves live to action, reasoning, `verified: true`, root + tx | "Now the part that matters. That badge is a hash — this pulls the record straight back out of 0G Storage by that hash alone. No private key, no trusting us. The decision I just influenced, recovered from the network itself, verified." |
+| 1:58–2:10 | `/pricing` + terminal `GET /api/provenance/records` | "The civilization is the demo; the product is this layer — a Research API that exports every 0G-reasoned, keyless-verifiable decision. Rip out 0G and none of it exists — not the reasoning, not the proof. That's the whole point." |
+
+**Honesty note (don't fake the loop):** a whisper takes effect on the citizen's **next tick** (the world ticks every 2h). To show it on camera, either whisper *before* recording and let a scheduled tick land, or run one tick manually (`run-scheduler.ts --days 1`) between the whisper and the causal-chain shot. Never paste a pre-saved result as if it were live.
+
+**If you only have ~90 seconds**, trim beat 0:15→0:33 and drop the `/map` beat (1:18–1:35): Hook → Whisper → Social node → Verify → one product line.
 
 **Rehearse the path, not a URL** (every fresh tick re-archives in verifiable shape):
-1. `/world` → land on a **recent-day** human-readable row.
-2. Click the citizen → confirm the **causal chain renders with a belief**.
-3. Back → click that row's **"0G Storage ✓"** badge → confirm `/verify/<root>` resolves to `verified: true`.
+1. Whisper to a citizen, then ensure a tick has landed (`tail tick.log`).
+2. `/citizens/[id]` → confirm the **causal chain renders with the Social node** (whisper visible).
+3. Back to `/world` → click that decision's **"0G Storage ✓"** badge → confirm `/verify/<root>` resolves to `verified: true`.
 
 ---
 
