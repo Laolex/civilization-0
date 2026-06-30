@@ -110,6 +110,9 @@ importers:
       '@civ/explainability':
         specifier: workspace:*
         version: link:../explainability
+      '@civ/history':
+        specifier: workspace:*
+        version: link:../history
       '@civ/memory':
         specifier: workspace:*
         version: link:../memory

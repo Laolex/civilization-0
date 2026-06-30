@@ -4,6 +4,10 @@ import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
 import { readWorldView, type WorldView } from "./read";
+// Deep src imports: @civ/history's barrel only re-exports ./types, so build/append come from src.
+import { buildCognitiveTransition } from "@civ/history/src/build";
+import { append } from "@civ/history/src/append";
+import { GENESIS_PARENT } from "@civ/history/src/types";
 
 const envNum = (v: string | undefined, d: number) => { const n = Number(v ?? d); return Number.isFinite(n) ? n : d; };
 const NEIGHBOR_CANDIDATE_LIMIT = envNum(process.env.NEIGHBOR_CANDIDATE_LIMIT, 5);
@@ -105,6 +109,25 @@ export class WorldRepository {
           `INSERT INTO relationships VALUES ($1,$2,$3,$4,$5)
            ON CONFLICT (citizen_id,other_id) DO UPDATE SET trust=$3,friendship=$4,influence=$5`,
           [rel.citizenId, rel.otherId, rel.trust, rel.friendship, rel.influence]);
+
+      // ── @civ/history shadow append (Invariant #2: same transaction as the decision) ──
+      // append() throws on failure, so the existing catch{ROLLBACK} undoes BOTH the decision
+      // and the transition — no orphan in either direction.
+      const wr = await client.query(`SELECT world_id FROM citizens WHERE id = $1`, [citizenId]);
+      const worldId: string = wr.rows[0]?.world_id ?? "default";
+      const retrievedMemories = store.getDecisionMemories(d.id).map((dm) => ({ id: dm.memoryId, weight: dm.weight }));
+      const retrievedBeliefs = store.getDecisionBeliefs(d.id).map((db) => ({ id: db.beliefId, weight: db.weight }));
+      const transition = buildCognitiveTransition({
+        result: { decision: d, event: e, observation: result.observation, availableActions: result.availableActions },
+        worldId,
+        engineVersion: process.env.ENGINE_VERSION ?? "civ0@dev",
+        timestamp: new Date().toISOString(),
+        parentHash: GENESIS_PARENT, // append() overwrites with the live tip
+        newEventId: () => `ct-${d.id}`,
+        retrievedMemories,
+        retrievedBeliefs,
+      });
+      await append(client, transition);
 
       await client.query("COMMIT");
     } catch (err) { await client.query("ROLLBACK"); throw err; }

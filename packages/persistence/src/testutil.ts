@@ -5,6 +5,9 @@ const WORLD_TABLES = [
   "narratives", "memberships", "organizations",
   "citizens", "goals", "relationships", "memories", "beliefs",
   "decisions", "decision_memories", "decision_beliefs", "events", "traces",
+  // @civ/history shadow log is world state now — reset it too, else the deterministic
+  // event_id (ct-<decisionId>) collides across test runs once persistTick shadow-appends.
+  "history_events", "history_anchors",
 ];
 
 /** Test helper: wipe all world rows (FK-safe via CASCADE) and reset the world_state singleton. */
