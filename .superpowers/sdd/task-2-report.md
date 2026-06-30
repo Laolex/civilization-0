@@ -1,55 +1,90 @@
-# Task 2 Report: Web types + chain builders emit the social node
+# Task 2 Report: Canonical JSON (`canonicalJSON`)
 
-## Status
-DONE — all tests pass, typecheck clean, committed.
+## What Was Implemented
 
-## Commit
-`b4cf544 feat(web): emit social-context node in causal chain builders`
+Implemented `canonicalJSON(value: unknown): string` in `packages/history/src/hash.ts` — a deterministic, language-independent JSON canonicalization function following JCS/RFC 8785 intent. This pure function:
+
+- Recursively sorts object keys lexicographically (UTF-16 code unit order)
+- Preserves array order
+- Omits undefined object properties
+- Handles null, boolean, number, string, array, and object types
+- Throws on non-finite numbers and unsupported types
+- Is deterministic across runtimes (no key-order variance, stable number formatting)
+
+This function serves as the hashing substrate for the event chain (consumed by Task 3's `eventHash`). Non-canonical serialization silently breaks replay tamper-evidence (Invariant #3).
 
 ## TDD Evidence
 
-### RED (before implementation)
-```
- FAIL  apps/web/lib/citizen-db.test.ts > toCausalChain social node > inserts a social node after beliefs and before compute when drivers exist
- FAIL  apps/web/lib/citizen-db.test.ts > toCausalChain social node > carries the drivers + query onto the social node
- Tests  2 failed | 2 passed (4)
+### RED Phase
+**Command:**
+```bash
+pnpm vitest run packages/history/src/hash.test.ts
 ```
 
-### GREEN (after implementation)
+**Output:**
 ```
- ✓ apps/web/lib/citizen-db.test.ts (4 tests) 5ms
- ✓ apps/web/lib/world.test.ts (5 tests) 5ms
- Test Files  2 passed (2)
- Tests  9 passed (9)
+❯ packages/history/src/hash.test.ts (0 test)
+
+FAIL  packages/history/src/hash.test.ts [ packages/history/src/hash.test.ts ]
+Error: Failed to load url ./hash (resolved id: ./hash) in /opt/civilization-0-history/packages/history/src/hash.test.ts. Does the file exist?
 ```
+
+**Why Expected:** Module `./hash` did not exist; test import failed as intended.
+
+### GREEN Phase
+**Command:**
+```bash
+pnpm vitest run packages/history/src/hash.test.ts
+```
+
+**Output:**
+```
+✓ packages/history/src/hash.test.ts (4 tests) 3ms
+
+Test Files  1 passed (1)
+     Tests  4 passed (4)
+```
+
+**All tests passed:**
+1. `is key-order independent` — two objects with different key orders produce identical serialization
+2. `sorts nested keys and preserves array order` — nested objects get key-sorted, arrays keep input order
+3. `serializes null/bool/number/string deterministically` — all primitives and null serialize in key-sorted order
+4. `omits undefined object properties` — undefined values are filtered from output
+
+### Typecheck
+**Command:**
+```bash
+pnpm -r typecheck
+```
+
+**Result:** Clean (no TypeScript errors).
 
 ## Files Changed
 
-### `apps/web/lib/types.ts`
-- Added `"social"` to `ChainNodeKind`
-- Added `SocialDriverView` and `OrgDriverView` interfaces (fields identical to shared `SocialDriver`/`OrgDriver`)
-- Added optional `socialDrivers?`, `socialQuery?`, `orgDriver?` to `ChainNode`
+Created:
+- `packages/history/src/hash.ts` (23 lines) — `canonicalJSON` implementation
+- `packages/history/src/hash.test.ts` (15 lines) — 4 passing tests
 
-### `apps/web/lib/citizen-db.ts`
-- Extended `RawChainInput` with `socialDrivers?`, `socialQuery?`, `orgDriver?`
-- Added exported `socialNode()` helper — returns `null` when no drivers/orgDriver (additive-only)
-- `toCausalChain()` now inserts social node after beliefs loop when `socialNode()` returns non-null
+## Commit
 
-### `apps/web/lib/world.ts`
-- Imported `socialNode` from `./citizen-db` (single definition, no duplication)
-- Inserted `socialNode(meta?.socialDrivers, meta?.socialQuery, meta?.orgDriver)` after the beliefs loop, before the compute push
+**SHA:** `a24ed25`
+**Subject:** `feat(history): deterministic canonicalJSON (JCS-1)`
+**Message:** Exact format per brief (no Co-Authored-By trailer, no AI attribution)
 
-### `packages/persistence/src/read.ts`
-- Imported `SocialDriver`, `OrgDriver` from `@civ/shared`
-- Added `socialDrivers: SocialDriver[]`, `socialQuery: string | null`, `orgDriver: OrgDriver | null` to `RawDecisionChain`
-- `readDecisionChainRaw()` now extracts and returns these three fields from `meta`
+## Test Summary
 
-### `apps/web/app/citizens/[id]/page.tsx` (citizen page builder — Step 6 lookup result)
-- **What the lookup found:** The page at line 71 passed `chainRaw` (a `RawDecisionChain`) directly as `toCausalChain(chainRaw)`. This is a near-passthrough, but TypeScript rejected the direct pass due to a `null` vs `undefined` mismatch on `socialQuery` and `orgDriver` (`RawDecisionChain` uses `| null`, `RawChainInput` uses `| undefined`).
-- **Fix applied:** Replaced the direct pass with an explicit spread that normalises `null → undefined` for the two nullable fields (`socialQuery ?? undefined`, `orgDriver ?? undefined`). `socialDrivers` passes through directly (already `SocialDriver[]`).
+- **Test Files:** 1 passed
+- **Tests:** 4 passed (100%)
+- **Typecheck:** Clean
+- **All assertions:** Pass (key order independence, nested sort, type handling, undefined omission)
 
-## Constraints Verified
-- **Additive only**: `socialNode()` returns `null` when `drivers` is empty and `orgDriver` is falsy — confirmed by test "omits the social node when there are no drivers"
-- **No logic duplication**: `socialNode` defined once in `citizen-db.ts`, imported by `world.ts`
-- **View types match shared types**: `SocialDriverView`/`OrgDriverView` fields are identical to `SocialDriver`/`OrgDriver`
-- **world.test.ts existing snapshot fixtures** have no `meta.socialDrivers` → social node correctly omitted → all 5 existing world tests still pass
+## Concerns
+
+None. The implementation:
+- Matches brief specification exactly (verbatim code)
+- Passes all 4 test cases with correct output
+- Handles edge cases (undefined, null, arrays, nested objects)
+- Throws on invalid inputs (non-finite numbers, unsupported types)
+- Is deterministic and language-independent (suitable for hash chain substrate)
+- Typecheck is clean
+- Commit uses exact author/email from brief, no attribution trailers

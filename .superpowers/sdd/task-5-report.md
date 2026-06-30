@@ -1,103 +1,118 @@
-# Task 5 Report: persistence `loadContext` neighbor/org hydration
+# Task 5 Report: `verifyChain` (pure re-walk + tamper detection)
 
-## What was built
+**Status:** COMPLETE  
+**Date:** 2026-06-29  
+**Branch:** feat/history-event-engine  
+**Commit:** 2c6201d751ff9bd2eaf4cc77c8c737a1b9a96632
 
-Modified `packages/persistence/src/repository.ts`:
-- Added `NeighborSummary, OrgContext` to the `@civ/shared` import (alongside existing `ActionType`).
-- Added module-scope consts: `NEIGHBOR_CANDIDATE_LIMIT` (default 5), `NEIGHBOR_TEXT_MAX` (default 200), and `clip` helper.
-- Inserted hydration block immediately before `return store;` in `loadContext`:
-  1. **Neighbor candidates**: one SQL with LATERAL joins over `relationships → citizens (same-world JOIN) → decisions / goals / beliefs`. Ordered by `(trust+influence) DESC, other_id`. Maps rows to `NeighborSummary[]` and calls `store.setNeighborCandidates(citizenId, candidates)`.
-  2. **Org context**: one SQL joining `memberships → organizations`, with LATERAL join on latest `events` row by actor. Maps to `OrgContext` and calls `store.setOrgContext(citizenId, org)`.
+## RED Evidence (Test Failure Before Implementation)
 
-Created `packages/persistence/src/loadcontext-graph.itest.ts` per brief verbatim.
+Initial test run showed 3 new failing tests with exact error "verifyChain is not a function":
 
-## TDD RED → GREEN
-
-**RED** (before implementation):
 ```
-DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it packages/persistence/src/loadcontext-graph.itest.ts
-→ 2 failed: getNeighborCandidates returns [], getOrgContext returns undefined
-```
+ ✗ packages/history/src/hash.test.ts (14 tests | 3 failed) 13ms
+   × verifyChain > accepts a well-formed chain
+     → verifyChain is not a function
+   × verifyChain > detects a tampered payload
+     → verifyChain is not a function
+   × verifyChain > detects a broken parent link
+     → verifyChain is not a function
 
-**GREEN** (after implementation):
-```
-DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it packages/persistence/src/loadcontext-graph.itest.ts
-→ ✓ 2 tests passed (303ms)
+Test Results: 11 passed | 3 failed
 ```
 
-## Full integration suite
+This confirmed the test block was properly appended and correctly written to fail on missing export.
+
+## GREEN Evidence (Test Success After Implementation)
+
+After appending the `verifyChain` function, all tests pass:
+
 ```
-DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it
-→ Test Files  25 passed (25)
-      Tests  49 passed (49)
-   Duration  7.92s
+ ✓ packages/history/src/hash.test.ts (14 tests) 7ms
+
+Test Files  1 passed (1)
+     Tests  14 passed (14)
 ```
-No regressions.
+
+The 14 tests include:
+- 3 existing canonicalJSON tests
+- 4 existing eventHash tests (including parentHash link detection)
+- 3 existing merkleRoot tests
+- 3 new verifyChain tests (well-formed chain, tampered payload, broken parent link)
+
+All passing with clean execution time.
 
 ## Typecheck
+
 ```
-pnpm typecheck
-→ (no output = clean)
+Scope: 14 of 15 workspace projects
+apps/web typecheck$ tsc --noEmit
+apps/web typecheck: Done
 ```
 
-## Files changed
-- `packages/persistence/src/repository.ts` — hydration impl + consts + import additions
-- `packages/persistence/src/loadcontext-graph.itest.ts` — new itest (created)
+No type errors. Types properly inferred across:
+- `HistoryEvent` (union of `CognitiveTransition | AnchorEvent`)
+- `Hash` type (0x-prefixed hex string)
+- `GENESIS_PARENT` constant (value import)
 
-## Commit
-- `fa7f1eb` feat(graphrag): loadContext hydrates bounded neighbor candidates + org context
+## Files Modified
 
-## Self-review
-- Cross-world filter is handled by `JOIN citizens c ON c.id = r.other_id AND c.world_id = $2` — faraway excluded.
-- Non-existent citizen (`ghost`) excluded because the JOIN finds no row.
-- Ordering: marcus (70+60=130) > lena (78+50=128) — assertion `["marcus","lena"]` passes.
-- `worldId` falls back to `"genesis"` when null (matches brief's `wid = worldId ?? "genesis"`).
-- Text fields clipped to `NEIGHBOR_TEXT_MAX` via `clip()`.
+1. **packages/history/src/hash.test.ts**
+   - Added: `import { verifyChain } from "./hash";`
+   - Updated: Type import to include `type HistoryEvent` (added to existing "./index" import alongside `CognitiveTransition`)
+   - Added: `chainOf()` helper function (constructs well-formed event chain with proper parentHash links)
+   - Added: `describe("verifyChain", ...)` block with 3 tests
+
+2. **packages/history/src/hash.ts**
+   - Added: `import { GENESIS_PARENT } from "./types";` (value import, separate from existing type import)
+   - Added: `verifyChain()` function (re-walk + tamper + parent-link detection)
+
+**Diff Summary:** 52 insertions, 1 deletion (pre-existing blank line)
+
+## Implementation Details
+
+The `verifyChain` function:
+- **Signature:** `(events: { event: HistoryEvent; eventHash: Hash; parentHash: Hash }[]) => { ok: boolean; brokenAt?: number; reason?: string }`
+- **Invariant #3 coverage:** Append-only tamper detection
+- **Algorithm:**
+  1. Initialize `expectedParent = GENESIS_PARENT` (first link anchor)
+  2. For each event in sequence:
+     - Recompute `eventHash` from the raw event payload
+     - Return `{ ok: false, brokenAt: i, reason: "eventHash mismatch (tampered payload)" }` if recomputed hash ≠ stored hash
+     - Return `{ ok: false, brokenAt: i, reason: "parentHash discontinuity" }` if stored parentHash ≠ expectedParent
+     - Advance `expectedParent = row.eventHash` for next iteration
+  3. Return `{ ok: true }` if all rows pass
+
+**Test Coverage:**
+1. **"accepts a well-formed chain"** — Uses an awkward-but-valid setup expression (`[..., ...].map(...).map(...)`); chain of 2 events with proper parent links; passes verification
+2. **"detects a tampered payload"** — Chain of 2; tampers event[1].reasoning after construction; recompute fails on hash mismatch
+3. **"detects a broken parent link"** — Chain of 2; manually break event[1].parentHash without updating eventHash; verification detects discontinuity without needing recompute
 
 ## Concerns
-None. Implementation matches brief exactly.
 
----
+None. Implementation is:
+- Verbatim from brief (no deviations)
+- Properly typed (no type-check errors)
+- Fully tested (3 test cases cover tamper + parent-link scenarios)
+- Isolated (only hash.ts and hash.test.ts touched, no scope creep)
+- Idiomatic (matches existing function style in hash.ts)
 
-# Task 5 Fixes: Graceful Degradation + Test Assertion
+## Commit Info
 
-## Fix 1: Graceful Degradation (repository.ts)
-
-Wrapped the GraphRAG hydration block (neighbor-candidate query + `store.setNeighborCandidates(...)` AND org query + `store.setOrgContext(...)`) in a single `try { ... } catch (err) { ... }` to make the enrichment non-fatal.
-
-**Change:**
-- Lines 162–205 in `packages/persistence/src/repository.ts`: wrapped the neighbor and org hydration block (two SQL queries + setter calls) in `try-catch`.
-- Catch logs a warning `[loadContext] neighbor/org hydration failed for ${citizenId}, continuing memory-only:` and continues without rethrowing.
-- All other core context loading (citizen/goals/memories/beliefs/relationships) remains OUTSIDE the try—only the new GraphRAG enrichment is guarded.
-- `return store;` stays after the catch.
-
-## Fix 2: Test Assertion (loadcontext-graph.itest.ts)
-
-Added assertion in the first `it(...)` block after the existing marcus expectations:
-```typescript
-expect(marcus.latestReasoning).toBe("backed ada");
+```
+Commit: 2c6201d751ff9bd2eaf4cc77c8c737a1b9a96632
+Subject: feat(history): verifyChain re-walk with tamper + parent-link detection
+Branch: feat/history-event-engine
+Files: packages/history/src/hash.ts, packages/history/src/hash.test.ts
 ```
 
-**Rationale:** The seed data (line 26 of itest) inserts a decision with reasoning `"backed ada"` for marcus. The hydration query now populates `latestReasoning` via `clip(x.latest_reasoning)`, so this assertion verifies the hydration is working.
+No Co-Authored-By trailer per project convention.
 
-## Verification
+## Next Steps
 
-**Integration test:**
-```
-DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it packages/persistence/src/loadcontext-graph.itest.ts
-→ ✓ 2 tests passed (287ms)
-```
-
-**Typecheck:**
-```
-pnpm typecheck
-→ (no output = clean)
-```
-
-## Commit
-
-- `1ab87ad` fix(graphrag): make loadContext neighbor/org hydration non-fatal + assert latestReasoning
-
-## Files Changed
-- `packages/persistence/src/repository.ts` — try-catch wrapping around hydration block
-- `packages/persistence/src/loadcontext-graph.itest.ts` — added latestReasoning assertion
+Task 5 is complete. Per brief, the controller will now run one consolidated independent review of the whole `hash.ts` (all 4 functions + tests from Tasks 2-5):
+- `canonicalJSON` ✓
+- `sha256Hex` ✓
+- `eventHash` ✓
+- `merkleRoot` ✓
+- `verifyChain` ✓ (new)

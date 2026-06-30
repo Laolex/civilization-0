@@ -1,156 +1,93 @@
-### Task 5: Persistence `loadContext` hydration
+### Task 5: `verifyChain` (pure re-walk + tamper detection) — Track B
+
+**Package:** `@civ/history`. **Depends on:** Tasks 2–4 (`canonicalJSON`, `sha256Hex`, `eventHash`, `merkleRoot` all in `packages/history/src/hash.ts`). This is the LAST Track B task — after it, the controller runs one consolidated independent review of the whole `hash.ts`.
 
 **Files:**
-- Modify: `packages/persistence/src/repository.ts` (`loadContext`, ~before `return store;` at line 157)
-- Test: `packages/persistence/src/loadcontext-graph.itest.ts`
+- Modify (append): `packages/history/src/hash.ts`
+- Modify (append): `packages/history/src/hash.test.ts`
 
 **Interfaces:**
-- Consumes: `store.setNeighborCandidates/setOrgContext` (Task 2); the `worldId` already computed in `loadContext` (line 131).
-- Produces: hydrated neighbor candidates + org context on the returned store.
+- Produces: `verifyChain(events: { event: HistoryEvent; eventHash: Hash; parentHash: Hash }[]): { ok: boolean; brokenAt?: number; reason?: string }`.
+  Verifies (a) each stored `eventHash` recomputes from the event, (b) `parentHash[i] === eventHash[i-1]`
+  (first row links to `GENESIS_PARENT`). Input is a single world's events in `seq` order.
+  This is the Invariant #3 (append-only) tamper-evidence walk.
 
-- [ ] **Step 1: Write the failing integration test.** Create `packages/persistence/src/loadcontext-graph.itest.ts`:
+This is TDD. Append only.
 
-```typescript
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { closePool, getPool } from "./pool";
-import { migrate } from "./migrate";
-import { WorldRepository } from "./repository";
-import { resetWorld } from "./testutil";
+#### Step 1: Append the failing test to `packages/history/src/hash.test.ts`
+```ts
+import { verifyChain } from "./hash";
 
-const pool = getPool();
-const repo = new WorldRepository();
-
-async function seed() {
-  await pool.query(`INSERT INTO worlds (id,name,owner_id,visibility,population_cap)
-    VALUES ('w1','W1',NULL,'public',100),('w2','W2',NULL,'public',100) ON CONFLICT (id) DO NOTHING`);
-  const cz = (id: string, world: string, wealth: number) => pool.query(
-    `INSERT INTO citizens (id,name,occupation,age,traits,wealth,reputation,tier,created_day,world_id)
-     VALUES ($1,$1,'x',30,'{}'::jsonb,$3,50,3,0,$2)`, [id, world, wealth]);
-  await cz("ada", "w1", 0); await cz("marcus", "w1", 100000); await cz("lena", "w1", 5000);
-  await cz("faraway", "w2", 9); // cross-world, must be excluded
-  const rel = (a: string, b: string, t: number, f: number, i: number) => pool.query(
-    `INSERT INTO relationships (citizen_id,other_id,trust,friendship,influence) VALUES ($1,$2,$3,$4,$5)`,
-    [a, b, t, f, i]);
-  await rel("ada", "marcus", 70, 50, 60);
-  await rel("ada", "lena", 78, 72, 50);
-  await rel("ada", "faraway", 90, 90, 90); // strongest but cross-world -> excluded
-  await rel("ada", "ghost", 99, 99, 99);    // no citizens row -> excluded
-  await pool.query(`INSERT INTO decisions (id,citizen_id,goal_id,day,reasoning,action,target_id,brain_provider,brain_model)
-    VALUES ('d1','marcus',NULL,4,'backed ada','invest','ada','p','m')`);
-  await pool.query(`INSERT INTO goals (id,citizen_id,kind,description,progress,active)
-    VALUES ('mg','marcus','wealth','grow capital',0.9,true)`);
-  await pool.query(`INSERT INTO beliefs (id,citizen_id,statement,confidence,source_memory_ids,updated_day)
-    VALUES ('mb','marcus','Ada is promising',0.8,'{}',4)`);
-  await pool.query(`INSERT INTO organizations (id,name,kind,founder_id,treasury,reputation,goal,created_day)
-    VALUES ('o1','Collective','guild','ada',0,50,'grow',1)`);
-  await pool.query(`INSERT INTO memberships (org_id,citizen_id,role,joined_day) VALUES ('o1','ada','founder',1)`);
-  await pool.query(`INSERT INTO events (id,day,type,actor_id,target_id,decision_id,payload)
-    VALUES ('oe1',3,'partner','o1',NULL,NULL,'{"reasoning":"expand"}'::jsonb)`);
+function chainOf(cts: CognitiveTransition[]) {
+  let parent = GENESIS_PARENT;
+  return cts.map((raw) => {
+    const ev = { ...raw, header: { ...raw.header, parentHash: parent } };
+    const h = eventHash(ev);
+    const row = { event: ev as HistoryEvent, eventHash: h, parentHash: parent };
+    parent = h;
+    return row;
+  });
 }
 
-beforeAll(async () => { await migrate(); });
-afterAll(async () => { await closePool(); });
-
-describe("loadContext graph hydration", () => {
-  beforeEach(async () => { await resetWorld(); await seed(); });
-
-  it("hydrates same-world neighbor candidates by trust+influence, with latest move/goal/belief/state", async () => {
-    const store = await repo.loadContext("ada");
-    const cands = store.getNeighborCandidates("ada");
-    // faraway (cross-world) + ghost (no citizens row) excluded; ordered by (trust+influence) desc:
-    // marcus 70+60=130 > lena 78+50=128
-    expect(cands.map((c) => c.id)).toEqual(["marcus", "lena"]);
-    const marcus = cands.find((c) => c.id === "marcus")!;
-    expect(marcus.relationship.trust).toBe(70);
-    expect(marcus.latestAction).toBe("invest");
-    expect(marcus.topGoal).toBe("grow capital");
-    expect(marcus.strongestBelief).toBe("Ada is promising");
-    expect(marcus.wealth).toBe(100000);
+describe("verifyChain", () => {
+  it("accepts a well-formed chain", () => {
+    const rows = chainOf([fakeCT({ header: undefined as never }), fakeCT()]
+      .map((_, i) => fakeCT({ reasoning: `r${i}` })));
+    expect(verifyChain(rows).ok).toBe(true);
   });
-
-  it("hydrates org context with the latest mandate", async () => {
-    const store = await repo.loadContext("ada");
-    const org = store.getOrgContext("ada");
-    expect(org?.id).toBe("o1");
-    expect(org?.latestAction).toBe("partner");
-    expect(org?.latestReasoning).toBe("expand");
+  it("detects a tampered payload", () => {
+    const rows = chainOf([fakeCT({ reasoning: "a" }), fakeCT({ reasoning: "b" })]);
+    (rows[1].event as CognitiveTransition).reasoning = "TAMPERED";
+    const r = verifyChain(rows);
+    expect(r.ok).toBe(false);
+    expect(r.brokenAt).toBe(1);
+  });
+  it("detects a broken parent link", () => {
+    const rows = chainOf([fakeCT({ reasoning: "a" }), fakeCT({ reasoning: "b" })]);
+    rows[1].parentHash = sha256Hex("wrong");
+    (rows[1].event as CognitiveTransition).header.parentHash = rows[1].parentHash;
+    rows[1].eventHash = eventHash(rows[1].event);
+    expect(verifyChain(rows).ok).toBe(false);
   });
 });
 ```
+Reuse imports already in the file: `eventHash`, `sha256Hex`, `GENESIS_PARENT`, `CognitiveTransition`, `HistoryEvent`, `fakeCT` are all already present from Tasks 3–4. Add ONLY `import { verifyChain } from "./hash";`. (`HistoryEvent` type — if not already imported as a value/type in the test file, add it to the existing `./index` type import; check before adding to avoid a duplicate.)
 
-- [ ] **Step 2: Run it, verify it fails.** Run: `DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it packages/persistence/src/loadcontext-graph.itest.ts`
-Expected: FAIL — `getNeighborCandidates` returns `[]`.
+#### Step 2: Run to verify it fails
+`pnpm vitest run packages/history/src/hash.test.ts`
+Expected: FAIL ("verifyChain is not a function"). Capture RED output.
 
-- [ ] **Step 3: Implement hydration in `loadContext`.** In `packages/persistence/src/repository.ts`, add `NeighborSummary, OrgContext, ActionType` to the `@civ/shared` import. Add these consts near the top of the file (module scope):
+#### Step 3: Append the implementation to `packages/history/src/hash.ts`
+```ts
+import { GENESIS_PARENT } from "./types";
 
-```typescript
-const NEIGHBOR_CANDIDATE_LIMIT = Number(process.env.NEIGHBOR_CANDIDATE_LIMIT ?? "5");
-const NEIGHBOR_TEXT_MAX = Number(process.env.NEIGHBOR_TEXT_MAX ?? "200");
-const clip = (s: string | null | undefined, n = NEIGHBOR_TEXT_MAX): string | undefined =>
-  s == null ? undefined : (s.length > n ? s.slice(0, n) : s);
+export function verifyChain(
+  events: { event: HistoryEvent; eventHash: Hash; parentHash: Hash }[],
+): { ok: boolean; brokenAt?: number; reason?: string } {
+  let expectedParent = GENESIS_PARENT;
+  for (let i = 0; i < events.length; i++) {
+    const row = events[i]!;
+    const recomputed = eventHash(row.event);
+    if (recomputed !== row.eventHash)
+      return { ok: false, brokenAt: i, reason: "eventHash mismatch (tampered payload)" };
+    if (row.parentHash !== expectedParent)
+      return { ok: false, brokenAt: i, reason: "parentHash discontinuity" };
+    expectedParent = row.eventHash;
+  }
+  return { ok: true };
+}
 ```
+Add the `import { GENESIS_PARENT } from "./types";` at the top of hash.ts with the other imports (it's a value import, separate from the existing `import type { HistoryEvent, Hash } from "./types";` — both valid).
 
-Inside `loadContext`, immediately before `return store;` (after the relationships loop), insert:
+#### Step 4: Run to verify it passes
+`pnpm vitest run packages/history/src/hash.test.ts`
+Expected: PASS (all Track B tests). Then `pnpm -r typecheck` — confirm clean.
 
-```typescript
-    const wid = worldId ?? "genesis";
-    const nb = await this.pool.query(
-      `SELECT r.other_id AS id, c.name, c.wealth, c.reputation,
-              r.trust, r.friendship, r.influence,
-              d.action AS latest_action, d.reasoning AS latest_reasoning,
-              g.description AS top_goal, b.statement AS strongest_belief
-         FROM relationships r
-         JOIN citizens c ON c.id = r.other_id AND c.world_id = $2
-         LEFT JOIN LATERAL (SELECT action, reasoning FROM decisions
-            WHERE citizen_id = r.other_id ORDER BY day DESC LIMIT 1) d ON true
-         LEFT JOIN LATERAL (SELECT description FROM goals
-            WHERE citizen_id = r.other_id AND active ORDER BY progress DESC LIMIT 1) g ON true
-         LEFT JOIN LATERAL (SELECT statement FROM beliefs
-            WHERE citizen_id = r.other_id ORDER BY confidence DESC LIMIT 1) b ON true
-        WHERE r.citizen_id = $1
-        ORDER BY (r.trust + r.influence) DESC, r.other_id
-        LIMIT $3`,
-      [citizenId, wid, NEIGHBOR_CANDIDATE_LIMIT]);
-    const candidates: NeighborSummary[] = nb.rows.map((x) => ({
-      id: x.id, name: x.name,
-      relationship: { trust: Number(x.trust), friendship: Number(x.friendship), influence: Number(x.influence) },
-      latestAction: x.latest_action ? (x.latest_action as ActionType) : undefined,
-      latestReasoning: clip(x.latest_reasoning),
-      topGoal: clip(x.top_goal), strongestBelief: clip(x.strongest_belief),
-      wealth: Number(x.wealth), reputation: Number(x.reputation),
-    }));
-    store.setNeighborCandidates(citizenId, candidates);
-
-    const og = await this.pool.query(
-      `SELECT o.id, o.name, o.kind, e.type AS latest_action, (e.payload->>'reasoning') AS latest_reasoning
-         FROM memberships m
-         JOIN organizations o ON o.id = m.org_id
-         LEFT JOIN LATERAL (SELECT type, payload FROM events
-            WHERE actor_id = o.id ORDER BY day DESC LIMIT 1) e ON true
-        WHERE m.citizen_id = $1
-        ORDER BY m.joined_day LIMIT 1`,
-      [citizenId]);
-    if (og.rows[0]) {
-      const o = og.rows[0];
-      const org: OrgContext = { id: o.id, name: o.name, kind: o.kind,
-        latestAction: o.latest_action ? (o.latest_action as ActionType) : undefined,
-        latestReasoning: clip(o.latest_reasoning) };
-      store.setOrgContext(citizenId, org);
-    }
-```
-
-- [ ] **Step 4: Run the itest, verify it passes.** Run: `DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it packages/persistence/src/loadcontext-graph.itest.ts`
-Expected: PASS (2 tests).
-
-- [ ] **Step 5: Run the full integration suite (no regressions).** Run: `DATABASE_URL="postgres://civ:civ-local@127.0.0.1:5432/civ0_test" pnpm test:it`
-Expected: all itests PASS.
-
-- [ ] **Step 6: Commit.**
-
+#### Step 5: Commit (NO Co-Authored-By, NO AI attribution)
 ```bash
-git add packages/persistence/src/repository.ts packages/persistence/src/loadcontext-graph.itest.ts
-git commit -m "feat(graphrag): loadContext hydrates bounded neighbor candidates + org context"
+git add packages/history/src/hash.ts packages/history/src/hash.test.ts
+git -c user.name="laolex" -c user.email="shelfcron-co@outlook.com" commit -m "feat(history): verifyChain re-walk with tamper + parent-link detection"
 ```
 
----
-
+#### Report
+Write your full report to `/opt/civilization-0-history/.superpowers/sdd/task-5-report.md` (RED/GREEN evidence, files changed, test summary, concerns). Then reply ≤15 lines: Status, commit SHA+subject, one-line test summary, concerns, report path.

@@ -75,3 +75,7 @@ TRACK E PRE-FLIGHT (DB tier, before dispatching Tasks 10-12):
   - history_events/history_anchors do NOT already exist in schema.sql — new tables, no collision ✓
   - BLOCKER for Task 11: history package.json deps do NOT include @civ/persistence, but append.itest.ts imports {migrate,getPool,closePool} from "@civ/persistence". MUST add @civ/persistence: workspace:* to history devDependencies + pnpm install BEFORE Task 11 (controller setup step, not implementer guesswork).
   - Task11 Executor uses `any[]` (plan-verbatim); if strict typecheck rejects, implementer reports BLOCKED.
+
+Task 10: complete (commit 88a1fb7, controller-verified diff = pure append +51/-0 after wallet_nonces RLS line, verbatim vs plan). history_events + history_anchors tables + 2 indexes + RLS on both. Integration test RED→GREEN 2/2 vs civ0_test. [review at Track E boundary]
+TRACK E DEP SETUP (controller, commit 06e6e89): added @civ/persistence: workspace:* to @civ/history devDependencies + pnpm install; symlink packages/history/node_modules/@civ/persistence verified; reciprocal dev↔prod cycle resolved cleanly (ethers peer warning pre-existing/unrelated).
+Task 11: DISPATCHED (sonnet, append.ts + append.itest.ts). loadWorldEvents kept in append.ts (NOT separate read.ts) per concrete Step-3 code; append runs on passed Executor (no self-tx) so Task 12 can pass a transactional client.
