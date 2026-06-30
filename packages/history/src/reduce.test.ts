@@ -80,4 +80,17 @@ describe("worldFold", () => {
     const evs: HistoryEvent[] = [{ header: H("ct"), actor: "c1" } as any];
     expect(worldFold(genesis, evs).wealth.find((w) => w.actor === "c1")?.wealth).toBe(100);
   });
+
+  it("applies RelationshipDeltas with canonical pair ordering and accumulates opposite orderings", () => {
+    const evs: HistoryEvent[] = [
+      { kind: "RelationshipDelta", header: H("r1"), a: "c2", b: "c3", field: "trust", delta: 10, decisionId: "d1" } as RelationshipDelta,
+      { kind: "RelationshipDelta", header: H("r2"), a: "c3", b: "c2", field: "trust", delta: 5, decisionId: "d2" } as RelationshipDelta,
+    ];
+    const facts = worldFold(genesis, evs);
+    const rel = facts.relationships.find((r) => (r.a === "c2" && r.b === "c3") || (r.a === "c3" && r.b === "c2"));
+    expect(rel).toBeDefined();
+    expect(rel?.trust).toBe(15); // 10 + 5, accumulated
+    expect(rel?.a).toBe("c2"); // canonical ordering (a < b)
+    expect(rel?.b).toBe("c3");
+  });
 });
