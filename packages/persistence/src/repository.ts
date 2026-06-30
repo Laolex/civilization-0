@@ -40,9 +40,31 @@ export class WorldRepository {
     await this.pool.query("UPDATE citizens SET forced_actions = NULL WHERE id = $1", [citizenId]);
   }
 
-  async adjustWealth(citizenId: string, delta: number): Promise<void> {
-    if (!delta) return;
-    await this.pool.query("UPDATE citizens SET wealth = GREATEST(0, wealth + $2) WHERE id = $1", [citizenId, delta]);
+  /** Apply an economic delta AND append a WealthDelta recording the ACTUAL (post-clamp) delta, atomically. */
+  async adjustWealth(citizenId: string, requestedDelta: number, decisionId: string | null = null): Promise<void> {
+    if (!requestedDelta) return;
+    const { append } = await import("@civ/history/src/append");
+    const { ensureEpoch } = await import("@civ/history/src/genesis");
+    const { buildWealthDelta } = await import("@civ/history/src/deltas");
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const wr = await client.query("SELECT world_id, wealth FROM citizens WHERE id = $1 FOR UPDATE", [citizenId]);
+      if (!wr.rows[0]?.world_id) { await client.query("ROLLBACK"); return; }
+      const worldId: string = wr.rows[0].world_id;
+      const before = Number(wr.rows[0].wealth);
+      const after = Math.max(0, before + requestedDelta);
+      const actual = after - before;
+      await ensureEpoch(client, worldId);
+      await client.query("UPDATE citizens SET wealth = $2 WHERE id = $1", [citizenId, after]);
+      if (actual !== 0) {
+        const dayR = await client.query("SELECT day FROM world_state WHERE id = 1");
+        const tickId = Number(dayR.rows[0]?.day ?? 0);
+        await append(client, buildWealthDelta({ worldId, tickId, actor: citizenId, delta: actual, decisionId }));
+      }
+      await client.query("COMMIT");
+    } catch (err) { await client.query("ROLLBACK"); throw err; }
+    finally { client.release(); }
   }
 
   async upsertCitizenRow(c: Citizen): Promise<void> {
