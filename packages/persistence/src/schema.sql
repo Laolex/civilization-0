@@ -175,6 +175,10 @@ CREATE TABLE IF NOT EXISTS history_events (
 );
 CREATE INDEX IF NOT EXISTS history_world_tick_idx ON history_events (world_id, tick_id);
 CREATE INDEX IF NOT EXISTS history_world_seq_idx  ON history_events (world_id, seq);
+-- A linear per-world chain has exactly one event per parent_hash. This UNIQUE guard makes a
+-- silent chain fork structurally impossible: concurrent appends that both read the same tip
+-- collide here, so the losing tick rolls back (Invariant #2) instead of forking (Invariant #3).
+CREATE UNIQUE INDEX IF NOT EXISTS history_world_parent_uq ON history_events (world_id, parent_hash);
 
 CREATE TABLE IF NOT EXISTS history_anchors (
   id           TEXT PRIMARY KEY,

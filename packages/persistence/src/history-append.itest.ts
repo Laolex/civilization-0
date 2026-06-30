@@ -17,9 +17,7 @@ const WORLD = "genesis";
 
 async function seed(): Promise<void> {
   await migrate();
-  await resetWorld();
-  // resetWorld does NOT truncate the history tables — clean this world's rows for isolation.
-  await getPool().query("DELETE FROM history_events WHERE world_id = $1", [WORLD]);
+  await resetWorld(); // truncates history_events/history_anchors too — see testutil WORLD_TABLES
   await repo.upsertCitizenRow({ id: "ada", name: "Ada", occupation: "Engineer", age: 29,
     traits: { ambition: 90, empathy: 40, loyalty: 30, curiosity: 80, discipline: 80, riskTolerance: 75 },
     wealth: 0, reputation: 50, tier: 3, createdDay: 0 });

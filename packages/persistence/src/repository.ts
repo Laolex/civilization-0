@@ -113,8 +113,12 @@ export class WorldRepository {
       // ── @civ/history shadow append (Invariant #2: same transaction as the decision) ──
       // append() throws on failure, so the existing catch{ROLLBACK} undoes BOTH the decision
       // and the transition — no orphan in either direction.
+      // Fail loudly rather than misattribute the transition to a phantom world: if the citizen
+      // row vanished mid-tick, throwing rolls the whole tick back (Invariant #2) instead of
+      // appending to a chain that no real decision can be reconciled against.
       const wr = await client.query(`SELECT world_id FROM citizens WHERE id = $1`, [citizenId]);
-      const worldId: string = wr.rows[0]?.world_id ?? "default";
+      if (!wr.rows[0]?.world_id) throw new Error(`persistTick: no world_id for citizen ${citizenId}`);
+      const worldId: string = wr.rows[0].world_id;
       const retrievedMemories = store.getDecisionMemories(d.id).map((dm) => ({ id: dm.memoryId, weight: dm.weight }));
       const retrievedBeliefs = store.getDecisionBeliefs(d.id).map((db) => ({ id: db.beliefId, weight: db.weight }));
       const transition = buildCognitiveTransition({
