@@ -5,6 +5,7 @@ import type { BrainProvider } from "@civ/brain";
 import type { ZeroGConfig } from "./config";
 import { ZeroGBrainError } from "./errors";
 import { withRetry } from "./retry";
+import { makeEvmProvider } from "./evm";
 import { instrumentBrain, instrumentChat, getOpikClient } from "./opik-tracing";
 import { ZeroGJudge } from "./judge";
 
@@ -28,8 +29,7 @@ export class RealChat implements Chat {
       // the whole tick. Rebuild the provider/wallet each attempt so a wedged
       // connection isn't reused. Non-transient errors still throw immediately.
       broker = await withRetry(() => {
-        const ethProvider = new ethers.JsonRpcProvider(config.evmRpc);
-        const wallet = new ethers.Wallet(config.privateKey, ethProvider);
+        const wallet = new ethers.Wallet(config.privateKey, makeEvmProvider(config.evmRpcs));
         return createZGComputeNetworkBroker(wallet);
       }, { onRetry: (err, attempt, delayMs) =>
         console.warn(`[0G] broker create attempt ${attempt} failed (${(err as Error)?.message ?? err}); retrying in ${delayMs}ms`) });

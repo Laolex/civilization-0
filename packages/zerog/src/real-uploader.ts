@@ -3,12 +3,13 @@ import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { ZeroGStorage, type Uploader } from "./storage";
 import type { ZeroGConfig } from "./config";
 import { ZeroGStorageError } from "./errors";
+import { makeEvmProvider } from "./evm";
 
 export class RealUploader implements Uploader {
   private readonly signer: ethers.Wallet;
   private readonly indexer: Indexer;
   constructor(private readonly config: ZeroGConfig) {
-    const provider = new ethers.JsonRpcProvider(config.evmRpc);
+    const provider = makeEvmProvider(config.evmRpcs);
     this.signer = new ethers.Wallet(config.privateKey, provider);
     this.indexer = new Indexer(config.storageIndexer);
   }
