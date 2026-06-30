@@ -47,9 +47,11 @@ describe("persistTick writes history in the same transaction (Invariant #2)", ()
     await repo.persistTick(store, result, "ada");
 
     const d = await getPool().query("SELECT id FROM decisions WHERE citizen_id = 'ada'");
-    const h = await getPool().query("SELECT event_id FROM history_events WHERE world_id = $1", [WORLD]);
+    const h = await getPool().query("SELECT event_id FROM history_events WHERE world_id = $1 AND kind = 'CognitiveTransition'", [WORLD]);
+    const g = await getPool().query("SELECT event_id FROM history_events WHERE world_id = $1 AND kind = 'Genesis'", [WORLD]);
     expect(d.rows.length).toBeGreaterThan(0);
-    expect(h.rows.length).toBe(d.rows.length); // one transition per committed decision
+    expect(h.rows.length).toBe(d.rows.length); // one CognitiveTransition per committed decision
+    expect(g.rows.length).toBe(1); // exactly one Genesis per world (idempotent)
   });
 
   it("on history append failure: the whole tick rolls back (no orphan decision)", async () => {

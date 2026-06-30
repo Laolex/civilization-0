@@ -1,5 +1,12 @@
 import { loadWorldEvents, type Executor } from "./append";
-import { eventKind, type CognitiveTransition, type Hash } from "./types";
+import { eventKind, type CognitiveTransition, type Genesis, type Hash } from "./types";
+
+/** The world's Genesis event (chain root), or null if the epoch is not yet established. */
+export async function loadGenesis(tx: Executor, worldId: string): Promise<Genesis | null> {
+  const rows = await loadWorldEvents(tx, worldId);
+  const g = rows.map((r) => r.event).find((e) => eventKind(e) === "Genesis");
+  return (g as Genesis) ?? null;
+}
 
 /** Latest authenticated transition for a (world, citizen, tick), or null if none was recorded. */
 export async function loadTransition(

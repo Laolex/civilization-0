@@ -104,6 +104,15 @@ export class WorldRepository {
              source_memory_ids=$5,updated_day=$6`,
           [b.id, b.citizenId, b.statement, b.confidence, JSON.stringify(b.sourceMemoryIds), b.updatedDay]);
 
+      // Resolve the world and establish its historical boundary FIRST (Invariant #5). ensureEpoch is
+      // idempotent and appends Genesis as the chain root the first time this world is touched, so every
+      // later append this tick (relationship deltas, the CognitiveTransition) links to Genesis, not root.
+      const wr = await client.query(`SELECT world_id FROM citizens WHERE id = $1`, [citizenId]);
+      if (!wr.rows[0]?.world_id) throw new Error(`persistTick: no world_id for citizen ${citizenId}`);
+      const worldId: string = wr.rows[0].world_id;
+      const { ensureEpoch } = await import("@civ/history/src/genesis");
+      await ensureEpoch(client, worldId);
+
       for (const rel of store.getRelationships(citizenId))
         await client.query(
           `INSERT INTO relationships VALUES ($1,$2,$3,$4,$5)
@@ -113,12 +122,6 @@ export class WorldRepository {
       // ── @civ/history shadow append (Invariant #2: same transaction as the decision) ──
       // append() throws on failure, so the existing catch{ROLLBACK} undoes BOTH the decision
       // and the transition — no orphan in either direction.
-      // Fail loudly rather than misattribute the transition to a phantom world: if the citizen
-      // row vanished mid-tick, throwing rolls the whole tick back (Invariant #2) instead of
-      // appending to a chain that no real decision can be reconciled against.
-      const wr = await client.query(`SELECT world_id FROM citizens WHERE id = $1`, [citizenId]);
-      if (!wr.rows[0]?.world_id) throw new Error(`persistTick: no world_id for citizen ${citizenId}`);
-      const worldId: string = wr.rows[0].world_id;
       const retrievedMemories = store.getDecisionMemories(d.id).map((dm) => ({ id: dm.memoryId, weight: dm.weight }));
       const retrievedBeliefs = store.getDecisionBeliefs(d.id).map((db) => ({ id: db.beliefId, weight: db.weight }));
       const transition = buildCognitiveTransition({
@@ -131,6 +134,7 @@ export class WorldRepository {
         retrievedMemories,
         retrievedBeliefs,
       });
+      (transition as { kind?: string }).kind = "CognitiveTransition";
       await append(client, transition);
 
       await client.query("COMMIT");
