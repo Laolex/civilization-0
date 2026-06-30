@@ -142,6 +142,15 @@ export class WorldRepository {
         const proof = await faithfulnessProof(this.pool, worldId);
         if (!proof.ok) console.warn(`[history] faithfulness divergence world=${worldId}`, proof.divergences);
       } catch (err) { console.warn("[history] faithfulness proof skipped:", err); }
+      // Best-effort 0G anchor — OFF by default (gated by HISTORY_ANCHOR=1) so the live 2h
+      // scheduler does not spend OG until explicitly enabled. Post-commit, never blocks the tick.
+      if (process.env.HISTORY_ANCHOR === "1") {
+        try {
+          const { anchorTick } = await import("@civ/history/src/anchor");
+          const { createZeroGStorage, loadZeroGConfig } = await import("@civ/zerog");
+          await anchorTick(this.pool, createZeroGStorage(loadZeroGConfig(process.env)), worldId, d.day);
+        } catch (err) { console.warn("[history] anchor skipped:", err); }
+      }
     } catch (err) { await client.query("ROLLBACK"); throw err; }
     finally { client.release(); }
   }
