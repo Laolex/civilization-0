@@ -1,5 +1,6 @@
 export * from "./config";
 export * from "./errors";
+export { withRetry, isTransientError, type RetryOptions } from "./retry";
 export * from "./storage";
 export * from "./brain";
 export * from "./download";
