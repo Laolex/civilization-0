@@ -13,6 +13,7 @@
     "@civ/explainability": "workspace:*",
     "@civ/brain": "workspace:*",
     "@civ/storage": "workspace:*",
+    "@civ/history": "workspace:*",
     "pg": "^8.13.1"
   },
   "devDependencies": { "@types/pg": "^8.11.10" }

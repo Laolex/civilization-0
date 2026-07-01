@@ -160,3 +160,35 @@ ALTER TABLE users              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE worlds             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_nonces      ENABLE ROW LEVEL SECURITY;
+
+-- ── @civ/history (Phase 1A) — append-only shadow log (additive; rows stay truth) ──
+CREATE TABLE IF NOT EXISTS history_events (
+  seq         BIGSERIAL PRIMARY KEY,
+  event_id    TEXT NOT NULL UNIQUE,
+  world_id    TEXT NOT NULL,
+  tick_id     INT  NOT NULL,
+  parent_hash TEXT NOT NULL,
+  event_hash  TEXT NOT NULL,
+  kind        TEXT NOT NULL,
+  payload     JSONB NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS history_world_tick_idx ON history_events (world_id, tick_id);
+CREATE INDEX IF NOT EXISTS history_world_seq_idx  ON history_events (world_id, seq);
+-- A linear per-world chain has exactly one event per parent_hash. This UNIQUE guard makes a
+-- silent chain fork structurally impossible: concurrent appends that both read the same tip
+-- collide here, so the losing tick rolls back (Invariant #2) instead of forking (Invariant #3).
+CREATE UNIQUE INDEX IF NOT EXISTS history_world_parent_uq ON history_events (world_id, parent_hash);
+
+CREATE TABLE IF NOT EXISTS history_anchors (
+  id           TEXT PRIMARY KEY,
+  world_id     TEXT NOT NULL,
+  tick_id      INT  NOT NULL,
+  merkle_root  TEXT NOT NULL,
+  zg_root_hash TEXT,
+  zg_tx_hash   TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE history_events  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE history_anchors ENABLE ROW LEVEL SECURITY;

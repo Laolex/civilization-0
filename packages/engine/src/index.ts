@@ -44,6 +44,8 @@ export interface TickResult {
   storedMemory: Memory | null;
   consumedPins: string[];
   consumedDilemma: boolean;
+  observation: { query: string; worldHeadline: string };
+  availableActions: string[];
 }
 
 export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise<TickResult> {
@@ -84,9 +86,10 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   // 3-4. Build context + decide. A queued dilemma narrows the choice set for
   // this one tick; the brain honors it at both the prompt and the parse layer.
   const forced = store.getForcedActions(citizenId);
+  const availableActions: string[] = forced ?? ALL_ACTIONS;
   const result = await brain.decide({
     citizen, goal, memories, beliefs, relationships, worldState,
-    availableActions: forced ?? ALL_ACTIONS, neighbors, orgContext,
+    availableActions, neighbors, orgContext,
   });
 
   // 5. Build the event (written to the store after its causal decision, below).
@@ -167,5 +170,10 @@ export async function runCitizenTick(deps: TickDeps, citizenId: string): Promise
   const consumedPins = pinned.map((m) => m.id);
   for (const id of consumedPins) store.clearPin(id);
 
-  return { decision, event, trace, storedMemory, consumedPins, consumedDilemma: forced != null };
+  return {
+    decision, event, trace, storedMemory, consumedPins,
+    consumedDilemma: forced != null,
+    observation: { query, worldHeadline: worldState.headline },
+    availableActions,
+  };
 }

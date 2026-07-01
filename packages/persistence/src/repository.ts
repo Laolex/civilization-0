@@ -1,15 +1,34 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import type { ActionType, Citizen, Memory, NeighborSummary, OrgContext } from "@civ/shared";
 import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
 import { getPool } from "./pool";
 import { readWorldView, type WorldView } from "./read";
+// Deep src imports: @civ/history's barrel only re-exports ./types, so build/append come from src.
+import { buildCognitiveTransition } from "@civ/history/src/build";
+import { append } from "@civ/history/src/append";
+import { GENESIS_PARENT } from "@civ/history/src/types";
 
 const envNum = (v: string | undefined, d: number) => { const n = Number(v ?? d); return Number.isFinite(n) ? n : d; };
 const NEIGHBOR_CANDIDATE_LIMIT = envNum(process.env.NEIGHBOR_CANDIDATE_LIMIT, 5);
 const NEIGHBOR_TEXT_MAX = envNum(process.env.NEIGHBOR_TEXT_MAX, 200);
 const clip = (s: string | null | undefined, n = NEIGHBOR_TEXT_MAX): string | undefined =>
   s == null ? undefined : (s.length > n ? s.slice(0, n) : s);
+
+/** Append a RelationshipDelta per changed field (new − old), in the caller's tx. Exported for testability. */
+export async function appendRelationshipDeltas(
+  client: PoolClient, worldId: string, tickId: number, a: string, b: string,
+  next: { trust: number; friendship: number; influence: number }, decisionId: string | null,
+): Promise<void> {
+  const { append } = await import("@civ/history/src/append");
+  const { buildRelationshipDelta } = await import("@civ/history/src/deltas");
+  const prev = await client.query("SELECT trust, friendship, influence FROM relationships WHERE citizen_id=$1 AND other_id=$2", [a, b]);
+  const old = prev.rows[0] ?? { trust: 0, friendship: 0, influence: 0 };
+  for (const field of ["trust", "friendship", "influence"] as const) {
+    const delta = Number(next[field]) - Number(old[field]);
+    if (delta !== 0) await append(client, buildRelationshipDelta({ worldId, tickId, A: a, B: b, field, delta, decisionId }));
+  }
+}
 
 function toVector(v: number[]): string { return `[${v.join(",")}]`; }
 function fromVector(s: string | null): number[] {
@@ -36,9 +55,35 @@ export class WorldRepository {
     await this.pool.query("UPDATE citizens SET forced_actions = NULL WHERE id = $1", [citizenId]);
   }
 
-  async adjustWealth(citizenId: string, delta: number): Promise<void> {
-    if (!delta) return;
-    await this.pool.query("UPDATE citizens SET wealth = GREATEST(0, wealth + $2) WHERE id = $1", [citizenId, delta]);
+  /** Apply an economic delta AND append a WealthDelta recording the ACTUAL (post-clamp) delta, atomically. */
+  async adjustWealth(citizenId: string, requestedDelta: number, decisionId: string | null = null): Promise<void> {
+    if (!requestedDelta) return;
+    const { append } = await import("@civ/history/src/append");
+    const { ensureEpoch } = await import("@civ/history/src/genesis");
+    const { buildWealthDelta } = await import("@civ/history/src/deltas");
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const wr = await client.query("SELECT world_id, wealth FROM citizens WHERE id = $1 FOR UPDATE", [citizenId]);
+      if (!wr.rows[0]?.world_id) { await client.query("ROLLBACK"); return; }
+      const worldId: string = wr.rows[0].world_id;
+      const before = Number(wr.rows[0].wealth);
+      const after = Math.max(0, before + requestedDelta);
+      const actual = after - before;
+      await ensureEpoch(client, worldId);
+      await client.query("UPDATE citizens SET wealth = $2 WHERE id = $1", [citizenId, after]);
+      if (actual !== 0) {
+        const dayR = await client.query("SELECT day FROM world_state WHERE id = 1");
+        const tickId = Number(dayR.rows[0]?.day ?? 0);
+        await append(client, buildWealthDelta({ worldId, tickId, actor: citizenId, delta: actual, decisionId }));
+        const { assertFaithful } = await import("@civ/history/src/enforce");
+        const check = await client.query("SELECT wealth FROM citizens WHERE id = $1", [citizenId]);
+        assertFaithful("Economic", Number(check.rows[0].wealth) === before + actual,
+          { citizenId, before, actual, now: Number(check.rows[0].wealth) });
+      }
+      await client.query("COMMIT");
+    } catch (err) { await client.query("ROLLBACK"); throw err; }
+    finally { client.release(); }
   }
 
   async upsertCitizenRow(c: Citizen): Promise<void> {
@@ -100,13 +145,60 @@ export class WorldRepository {
              source_memory_ids=$5,updated_day=$6`,
           [b.id, b.citizenId, b.statement, b.confidence, JSON.stringify(b.sourceMemoryIds), b.updatedDay]);
 
-      for (const rel of store.getRelationships(citizenId))
+      // Resolve the world and establish its historical boundary FIRST (Invariant #5). ensureEpoch is
+      // idempotent and appends Genesis as the chain root the first time this world is touched, so every
+      // later append this tick (relationship deltas, the CognitiveTransition) links to Genesis, not root.
+      const wr = await client.query(`SELECT world_id FROM citizens WHERE id = $1`, [citizenId]);
+      if (!wr.rows[0]?.world_id) throw new Error(`persistTick: no world_id for citizen ${citizenId}`);
+      const worldId: string = wr.rows[0].world_id;
+      const { ensureEpoch } = await import("@civ/history/src/genesis");
+      await ensureEpoch(client, worldId);
+
+      for (const rel of store.getRelationships(citizenId)) {
+        await appendRelationshipDeltas(client, worldId, d.day, rel.citizenId, rel.otherId,
+          { trust: rel.trust, friendship: rel.friendship, influence: rel.influence }, d.id);
         await client.query(
           `INSERT INTO relationships VALUES ($1,$2,$3,$4,$5)
            ON CONFLICT (citizen_id,other_id) DO UPDATE SET trust=$3,friendship=$4,influence=$5`,
           [rel.citizenId, rel.otherId, rel.trust, rel.friendship, rel.influence]);
+      }
+
+      // ── @civ/history shadow append (Invariant #2: same transaction as the decision) ──
+      // append() throws on failure, so the existing catch{ROLLBACK} undoes BOTH the decision
+      // and the transition — no orphan in either direction.
+      const retrievedMemories = store.getDecisionMemories(d.id).map((dm) => ({ id: dm.memoryId, weight: dm.weight }));
+      const retrievedBeliefs = store.getDecisionBeliefs(d.id).map((db) => ({ id: db.beliefId, weight: db.weight }));
+      const transition = buildCognitiveTransition({
+        result: { decision: d, event: e, observation: result.observation, availableActions: result.availableActions },
+        worldId,
+        engineVersion: process.env.ENGINE_VERSION ?? "civ0@dev",
+        timestamp: new Date().toISOString(),
+        parentHash: GENESIS_PARENT, // append() overwrites with the live tip
+        newEventId: () => `ct-${d.id}`,
+        retrievedMemories,
+        retrievedBeliefs,
+      });
+      (transition as { kind?: string }).kind = "CognitiveTransition";
+      await append(client, transition);
 
       await client.query("COMMIT");
+      // Faithfulness Proof — WARN-ONLY in 1A (logs divergence, never fails the tick).
+      // Runs post-commit on this.pool (NOT the about-to-be-released client) with its own
+      // try/catch so it can never trigger the outer ROLLBACK of an already-committed tick.
+      try {
+        const { faithfulnessProof } = await import("@civ/history/src/verify");
+        const proof = await faithfulnessProof(this.pool, worldId);
+        if (!proof.ok) console.warn(`[history] faithfulness divergence world=${worldId}`, proof.divergences);
+      } catch (err) { console.warn("[history] faithfulness proof skipped:", err); }
+      // Best-effort 0G anchor — OFF by default (gated by HISTORY_ANCHOR=1) so the live 2h
+      // scheduler does not spend OG until explicitly enabled. Post-commit, never blocks the tick.
+      if (process.env.HISTORY_ANCHOR === "1") {
+        try {
+          const { anchorTick } = await import("@civ/history/src/anchor");
+          const { createZeroGStorage, loadZeroGConfig } = await import("@civ/zerog");
+          await anchorTick(this.pool, createZeroGStorage(loadZeroGConfig(process.env)), worldId, d.day);
+        } catch (err) { console.warn("[history] anchor skipped:", err); }
+      }
     } catch (err) { await client.query("ROLLBACK"); throw err; }
     finally { client.release(); }
   }

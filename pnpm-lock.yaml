@@ -29,6 +29,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@civ/history':
+        specifier: workspace:*
+        version: link:../../packages/history
       '@civ/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -69,6 +72,31 @@ importers:
 
   packages/explainability: {}
 
+  packages/history:
+    dependencies:
+      '@civ/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@civ/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@civ/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@civ/zerog':
+        specifier: workspace:*
+        version: link:../zerog
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@civ/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
   packages/memory: {}
 
   packages/persistence:
@@ -85,6 +113,9 @@ importers:
       '@civ/explainability':
         specifier: workspace:*
         version: link:../explainability
+      '@civ/history':
+        specifier: workspace:*
+        version: link:../history
       '@civ/memory':
         specifier: workspace:*
         version: link:../memory

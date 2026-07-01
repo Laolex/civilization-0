@@ -20,7 +20,8 @@
       "@civ/zerog": ["packages/zerog/src"],
       "@civ/provenance": ["packages/provenance/src"],
       "@civ/persistence": ["packages/persistence/src"],
-      "@civ/scheduler": ["packages/scheduler/src"]
+      "@civ/scheduler": ["packages/scheduler/src"],
+      "@civ/history": ["packages/history/src"]
     }
   }
 }
