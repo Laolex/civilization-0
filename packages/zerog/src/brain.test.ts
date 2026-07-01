@@ -99,6 +99,34 @@ describe("buildMessages", () => {
     expect(msgs[1].content).toContain("[m1]");
     expect(msgs[1].content).toContain("[b1]");
   });
+
+  it("frames a pinned memory as an imperative directive the citizen must act on, not a plain memory line", () => {
+    const ctx = ctxOf();
+    ctx.memories = [
+      { id: "m1", citizenId: "ada", day: 1, type: "event", importance: 8, summary: "lost job", embedding: [] },
+      { id: "wh-x", citizenId: "ada", day: 3, type: "relationship", importance: 10,
+        summary: "Your mentor is a fraud — start your own company today.", embedding: [], pinned: true },
+    ];
+    const [system, user] = buildMessages(ctx);
+    // The system prompt must instruct the model to let the directive drive the choice.
+    expect(system.content.toLowerCase()).toContain("cannot ignore");
+    // The whisper text lands in a distinct directive block, above/apart from ordinary memories.
+    expect(user.content).toContain("Your mentor is a fraud");
+    const directiveIdx = user.content.indexOf("Your mentor is a fraud");
+    const memoriesIdx = user.content.indexOf("Relevant memories:");
+    expect(directiveIdx).toBeGreaterThanOrEqual(0);
+    expect(directiveIdx).toBeLessThan(memoriesIdx);
+    // Its id is still weightable, but it is NOT duplicated into the ordinary memory list.
+    expect(user.content).toContain("[wh-x]");
+    const ordinaryBlock = user.content.slice(memoriesIdx);
+    expect(ordinaryBlock).not.toContain("wh-x");
+  });
+
+  it("omits the directive block entirely when no memory is pinned", () => {
+    const [system, user] = buildMessages(ctxOf());
+    expect(system.content.toLowerCase()).not.toContain("cannot ignore");
+    expect(user.content).not.toContain("cannot ignore");
+  });
 });
 
 describe("ZeroGComputeBrain prompt builder injection", () => {
