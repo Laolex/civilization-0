@@ -43,4 +43,14 @@ describe("adjustWealth coupling", () => {
     await new WorldRepository().adjustWealth("c1", 0);
     expect((await wealthDeltas()).length).toBe(0);
   });
+
+  it("two same-actor same-tick calls with no decisionId both succeed and produce distinct events", async () => {
+    await seed("c1", 100);
+    const repo = new WorldRepository();
+    await repo.adjustWealth("c1", 8);
+    await repo.adjustWealth("c1", -1000);
+    const ds = await wealthDeltas();
+    expect(ds.length).toBe(2);
+    expect((ds[0] as any).header.eventId).not.toBe((ds[1] as any).header.eventId);
+  });
 });
