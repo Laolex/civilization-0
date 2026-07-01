@@ -17,6 +17,12 @@ We prove it with the hardest possible demo: **a persistent AI society that runs 
 
 > **Why 0G is load-bearing:** the reasoning runs on 0G Compute (with cryptographic `verified: true`), the permanent record lives on 0G Storage, and verification is keyless against the network. A normal app would just ask you to trust its database. This one doesn't.
 
+> **Where this sits in the field:** agent-trust standards are converging on *reputation of
+> outcomes* — ERC-8004's Validation registry re-runs results; escrow protocols stake on them.
+> Civilization-0 owns the missing layer: **provenance of reasoning**. Not "was the answer
+> right?" but *"can anyone reconstruct **why** the agent decided — keyless, from the network,
+> with no trust in the operator?"* Complementary to the registries; owned by no one else.
+
 ### The whole idea in one API call
 
 ```ts
