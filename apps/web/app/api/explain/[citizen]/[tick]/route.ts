@@ -17,6 +17,8 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "invalid tick" }, { status: 400 });
   try {
     const view = await buildExplainView(getPool(), world, params.citizen, tick);
+    if (view && "refused" in view)
+      return NextResponse.json({ ok: false, error: "pre-epoch", epochId: view.epochId }, { status: 409 });
     if (!view) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
     return NextResponse.json({ ok: true, view });
   } catch (err) {

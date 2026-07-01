@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { GENESIS_PARENT } from "./types";
-import type { HistoryEvent, Hash } from "./types";
+import type { HistoryEvent, Hash, WorldFacts } from "./types";
 
 /**
  * Deterministic, language-independent JSON canonicalization (JCS / RFC 8785 intent).
@@ -37,6 +37,11 @@ export function sha256Hex(input: string): Hash {
 export function eventHash(event: HistoryEvent): Hash {
   const { header, ...payload } = event;
   return sha256Hex(canonicalJSON(header) + "\n" + canonicalJSON(payload));
+}
+
+/** Deterministic hash of captured world facts — the Genesis worldHash (tamper-evident baseline). */
+export function genesisFactsHash(facts: WorldFacts): Hash {
+  return sha256Hex(canonicalJSON(facts));
 }
 
 export function merkleRoot(hashes: Hash[]): Hash {
