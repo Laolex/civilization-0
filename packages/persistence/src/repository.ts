@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import type { ActionType, Citizen, Memory, NeighborSummary, OrgContext } from "@civ/shared";
 import type { TickResult } from "@civ/engine";
 import { InMemoryWorldStore } from "@civ/store";
@@ -14,6 +14,21 @@ const NEIGHBOR_CANDIDATE_LIMIT = envNum(process.env.NEIGHBOR_CANDIDATE_LIMIT, 5)
 const NEIGHBOR_TEXT_MAX = envNum(process.env.NEIGHBOR_TEXT_MAX, 200);
 const clip = (s: string | null | undefined, n = NEIGHBOR_TEXT_MAX): string | undefined =>
   s == null ? undefined : (s.length > n ? s.slice(0, n) : s);
+
+/** Append a RelationshipDelta per changed field (new − old), in the caller's tx. Exported for testability. */
+export async function appendRelationshipDeltas(
+  client: PoolClient, worldId: string, tickId: number, a: string, b: string,
+  next: { trust: number; friendship: number; influence: number }, decisionId: string | null,
+): Promise<void> {
+  const { append } = await import("@civ/history/src/append");
+  const { buildRelationshipDelta } = await import("@civ/history/src/deltas");
+  const prev = await client.query("SELECT trust, friendship, influence FROM relationships WHERE citizen_id=$1 AND other_id=$2", [a, b]);
+  const old = prev.rows[0] ?? { trust: 0, friendship: 0, influence: 0 };
+  for (const field of ["trust", "friendship", "influence"] as const) {
+    const delta = Number(next[field]) - Number(old[field]);
+    if (delta !== 0) await append(client, buildRelationshipDelta({ worldId, tickId, A: a, B: b, field, delta, decisionId }));
+  }
+}
 
 function toVector(v: number[]): string { return `[${v.join(",")}]`; }
 function fromVector(s: string | null): number[] {
@@ -135,11 +150,14 @@ export class WorldRepository {
       const { ensureEpoch } = await import("@civ/history/src/genesis");
       await ensureEpoch(client, worldId);
 
-      for (const rel of store.getRelationships(citizenId))
+      for (const rel of store.getRelationships(citizenId)) {
+        await appendRelationshipDeltas(client, worldId, d.day, rel.citizenId, rel.otherId,
+          { trust: rel.trust, friendship: rel.friendship, influence: rel.influence }, d.id);
         await client.query(
           `INSERT INTO relationships VALUES ($1,$2,$3,$4,$5)
            ON CONFLICT (citizen_id,other_id) DO UPDATE SET trust=$3,friendship=$4,influence=$5`,
           [rel.citizenId, rel.otherId, rel.trust, rel.friendship, rel.influence]);
+      }
 
       // ── @civ/history shadow append (Invariant #2: same transaction as the decision) ──
       // append() throws on failure, so the existing catch{ROLLBACK} undoes BOTH the decision
