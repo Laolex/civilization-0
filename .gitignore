@@ -9,3 +9,6 @@ dist/
 coverage/
 sdd-artifacts/
 .vercel
+
+# internal SDD scratch — never ship
+.superpowers/
