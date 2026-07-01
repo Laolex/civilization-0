@@ -7,9 +7,20 @@ describe("loadZeroGConfig", () => {
     const c = loadZeroGConfig({ ZG_PRIVATE_KEY: "0xabc" });
     expect(c.privateKey).toBe("0xabc");
     expect(c.evmRpc).toBe("https://evmrpc-testnet.0g.ai");
+    // default ships a public fallback after the official endpoint
+    expect(c.evmRpcs).toEqual([
+      "https://evmrpc-testnet.0g.ai",
+      "https://0g-galileo-testnet.drpc.org",
+    ]);
     expect(c.storageIndexer).toBe("https://indexer-storage-testnet-turbo.0g.ai");
     expect(c.fund.deposit).toBe(3); // protocol minimum to open a ledger
     expect(c.fund.transfer).toBe(5n * 10n ** 16n); // 0.05 OG in neuron
+  });
+
+  it("parses a comma-separated ZG_EVM_RPC into primary + fallbacks", () => {
+    const c = loadZeroGConfig({ ZG_PRIVATE_KEY: "0xabc", ZG_EVM_RPC: " https://primary.example , https://backup.example " });
+    expect(c.evmRpc).toBe("https://primary.example"); // first = primary
+    expect(c.evmRpcs).toEqual(["https://primary.example", "https://backup.example"]);
   });
   it("allows overriding fund amounts via env (OG → neuron)", () => {
     const c = loadZeroGConfig({ ZG_PRIVATE_KEY: "0xabc", ZG_FUND_DEPOSIT: "0.3", ZG_FUND_TRANSFER: "0.2" });

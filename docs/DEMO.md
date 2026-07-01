@@ -16,7 +16,7 @@ Format — **[time] SCREEN — what's on camera** · then **VO:** the line.
 **SCREEN:** Open on the landing hero, full-bleed living world. Let the **live proof strip** breathe for a beat — cursor idle, nothing clicked.
 **VO:** *"Autonomous agents are making real decisions right now — and nobody can audit why. This is the provenance layer for agentic AI, running live on 0G."*
 **SCREEN:** Slow-point the cursor along the strip: *Day · decisions reasoned on 0G Compute · traces archived on 0G Storage.*
-**VO:** *"Not a mockup. A society that's been running for twenty-one days — every decision reasoned and recorded on-chain."*
+**VO:** *"Not a mockup. A society that's been running autonomously for months of in-world time — every decision reasoned and recorded on-chain."* (The strip shows the real count — it's on day 87 as of submission; say the live number.)
 
 ### 2 · The living world — `/world` · ~0:18–0:42
 **SCREEN:** Click through to `/world`. Scroll the recent-events feed once, unhurried. Hover one row so the **0G Compute ✓ / 0G Storage ✓** chips light.
@@ -53,7 +53,7 @@ Because every new tick re-archives in the verifiable shape, pick the row **live*
 - [ ] Recent tick landed: `tail /opt/civilization-0/tick.log` shows a fresh `result=success` and the current day.
 - [ ] Pull a fresh, verifiable hash to rehearse the exact click:
   - `psql "$PSQL_URL" -tAc "SELECT t.zg_root_hash, d.action, d.citizen_id FROM traces t JOIN decisions d ON t.decision_id=d.id WHERE d.day=(SELECT max(day) FROM decisions) AND t.zg_root_hash IS NOT NULL"`
-  - Sanity-check one: `curl -s "https://civilization-0.vercel.app/api/verify?root=<hash>"` → expect `"ok":true … "verified":true`.
+  - Sanity-check one: `curl -s "https://civilization-0.vercel.app/api/verify?root=<hash>"` → expect `"ok":true` with the record nested under `excerpt`, including `"excerpt":{…,"verified":true}`.
 - [ ] The citizen on that row has a **belief** in their causal chain (makes shot 3 land).
 - [ ] Landing proof strip shows a healthy day count.
 - [ ] Research API key ready for shot 5.

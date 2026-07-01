@@ -19,8 +19,37 @@ describe("drainInterventions", () => {
       markFailed: async () => {},
     };
     const out = await drainInterventions(deps, 5);
-    expect(out).toEqual({ applied: 1, failed: 0 });
+    expect(out).toMatchObject({ applied: 1, failed: 0 });
     expect(applied).toEqual(["iv1"]);
+  });
+
+  it("returns the citizen ids targeted by applied whisper/dilemma so they can be force-ticked", async () => {
+    const deps: DrainDeps = {
+      pending: async () => [
+        ivOf({ id: "w", type: "whisper", targetCitizenId: "lena", payload: { text: "hi" } }),
+        ivOf({ id: "d", type: "dilemma", targetCitizenId: "marcus", payload: { text: "choose", actions: ["work", "invest"] } }),
+        ivOf({ id: "we", type: "world_event", targetCitizenId: null, payload: { headline: "x" } }),
+        ivOf({ id: "t", type: "tick_request", targetCitizenId: null, payload: {} }),
+      ],
+      applyWhisper: async () => {},
+      applyDilemma: async () => {},
+      applyWorldEvent: async () => {},
+      applyTickRequest: async () => {},
+      markApplied: async () => {}, markFailed: async () => {},
+    };
+    const out = await drainInterventions(deps, 5);
+    // world_event/tick_request target the world, not a citizen — excluded.
+    expect(out.targets).toEqual(["lena", "marcus"]);
+  });
+
+  it("does not include a target whose applier threw", async () => {
+    const deps: DrainDeps = {
+      pending: async () => [ivOf({ id: "w", type: "whisper", targetCitizenId: "lena", payload: { text: "hi" } })],
+      applyWhisper: async () => { throw new Error("target not in world"); },
+      markApplied: async () => {}, markFailed: async () => {},
+    };
+    const out = await drainInterventions(deps, 5);
+    expect(out.targets).toEqual([]);
   });
 
   it("marks a whisper failed (without throwing) when the applier throws", async () => {
@@ -32,7 +61,7 @@ describe("drainInterventions", () => {
       markFailed: async (id) => { failed.push(id); },
     };
     const out = await drainInterventions(deps, 5);
-    expect(out).toEqual({ applied: 0, failed: 1 });
+    expect(out).toMatchObject({ applied: 0, failed: 1 });
     expect(failed).toEqual(["bad"]);
   });
 
@@ -43,7 +72,7 @@ describe("drainInterventions", () => {
       markApplied: async () => {}, markFailed: async () => {},
     };
     const out = await drainInterventions(deps, 5);
-    expect(out).toEqual({ applied: 0, failed: 0 });
+    expect(out).toMatchObject({ applied: 0, failed: 0 });
   });
 
   it("derives the pinned-memory id deterministically from the intervention id (idempotent re-apply)", async () => {
@@ -81,7 +110,7 @@ describe("drainInterventions", () => {
     const out = await drainInterventions(deps, 5);
     // Despite markFailed rejecting for iv1, drainInterventions should not throw
     // and should still process iv2 (apply it successfully)
-    expect(out).toEqual({ applied: 1, failed: 1 });
+    expect(out).toMatchObject({ applied: 1, failed: 1 });
     expect(applied).toEqual(["iv2"]);
     expect(failed).toEqual(["iv1"]);
   });
@@ -95,7 +124,7 @@ describe("drainInterventions", () => {
       markApplied: async () => {}, markFailed: async () => {},
     };
     const out = await drainInterventions(deps, 5);
-    expect(out).toEqual({ applied: 2, failed: 0 });
+    expect(out).toMatchObject({ applied: 2, failed: 0 });
     expect(calls).toEqual(["whisper:w1", "event:e1"]);
   });
 
@@ -108,7 +137,7 @@ describe("drainInterventions", () => {
       markFailed: async (id) => { marked.push(`f:${id}`); },
     };
     const out = await drainInterventions(deps, 5);
-    expect(out).toEqual({ applied: 0, failed: 0 });
+    expect(out).toMatchObject({ applied: 0, failed: 0 });
     expect(marked).toEqual([]);
   });
 
@@ -159,7 +188,7 @@ describe("drainInterventions", () => {
       markApplied: async () => {}, markFailed: async () => {},
     };
     const out = await drainInterventions(deps, 5);
-    expect(out).toEqual({ applied: 1, failed: 0 });
+    expect(out).toMatchObject({ applied: 1, failed: 0 });
     expect(calls).toEqual(["dilemma:d1"]);
   });
 

@@ -15,7 +15,7 @@ export interface DayDeps {
   makeTickDeps: (store: InMemoryWorldStore, day: number) => TickDeps;
   citizens: Ticker[];
   orgEffects?: OrgEffects;
-  drain?: (day: number) => Promise<{ applied: number; failed: number }>;
+  drain?: (day: number) => Promise<{ applied: number; failed: number; targets: string[] }>;
   runTick?: (deps: TickDeps, id: string) => Promise<TickResult>;
 }
 
@@ -40,9 +40,13 @@ async function applyOrgEffect(eff: OrgEffects, result: TickResult, citizenId: st
 }
 
 export async function runDay(deps: DayDeps, day: number): Promise<{ ticked: string[] }> {
-  if (deps.drain) await deps.drain(day);
+  const drained = deps.drain ? await deps.drain(day) : undefined;
   const runTick = deps.runTick ?? runCitizenTick;
-  const ids = selectTickers(deps.citizens, day);
+  // Citizens due by cadence, plus any citizen a whisper/dilemma just targeted so
+  // the intervention lands on this tick rather than the target's next cadence day.
+  const known = new Set(deps.citizens.map((c) => c.id));
+  const forced = (drained?.targets ?? []).filter((id) => known.has(id));
+  const ids = [...new Set([...selectTickers(deps.citizens, day), ...forced])];
   for (const id of ids) {
     const store = await deps.repo.loadContext(id);
     const result = await runTick(deps.makeTickDeps(store, day), id);

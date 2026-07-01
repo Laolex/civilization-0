@@ -13,7 +13,7 @@ Operator guide for the `@civ/zerog` package — 0G Storage and 0G Compute integr
 | Key | Required | Default | Notes |
 |---|---|---|---|
 | `ZG_PRIVATE_KEY` | yes | — | Wallet private key (never printed by scripts) |
-| `ZG_EVM_RPC` | no | `https://evmrpc-testnet.0g.ai` | 0G EVM RPC endpoint |
+| `ZG_EVM_RPC` | no | `https://evmrpc-testnet.0g.ai,https://0g-galileo-testnet.drpc.org` | 0G EVM RPC endpoint(s). **Comma-separated = failover** (primary first): ethers uses a FallbackProvider so a sustained outage of one endpoint routes to the next. Storage SDK calls use the primary only. |
 | `ZG_STORAGE_INDEXER` | no | `https://indexer-storage-testnet-turbo.0g.ai` | Storage indexer URL |
 | `ZG_COMPUTE_PROVIDER` | no (required for compute) | — | Provider address; pin after step 2 |
 | `ZG_COMPUTE_MODEL` | no | provider default | e.g. `qwen/qwen2.5-omni-7b` |
