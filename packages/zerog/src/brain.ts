@@ -17,7 +17,14 @@ Only weight memory/belief ids that appear in the lists below.`;
 
 export function buildMessages(ctx: DecisionContext): ChatMessage[] {
   const traits = Object.entries(ctx.citizen.traits).map(([k, v]) => `${k} ${v}`).join(", ");
-  const mems = ctx.memories.map((m) => `- [${m.id}] (importance ${m.importance}) ${m.summary}`).join("\n") || "- (none)";
+  // Pinned memories are player interventions (a whisper or a dilemma's framing).
+  // They must not read as one bland memory among many — a small model buries them
+  // under the citizen's standing goal. Split them into an imperative directive
+  // block that the system prompt tells the model to obey THIS turn.
+  const pinnedMems = ctx.memories.filter((m) => m.pinned);
+  const ordinaryMems = ctx.memories.filter((m) => !m.pinned);
+  const directives = pinnedMems.map((m) => `- [${m.id}] ${m.summary}`).join("\n");
+  const mems = ordinaryMems.map((m) => `- [${m.id}] (importance ${m.importance}) ${m.summary}`).join("\n") || "- (none)";
   const beliefs = ctx.beliefs.map((b) => `- [${b.id}] ${b.statement} (confidence ${b.confidence})`).join("\n") || "- (none)";
   const rels = ctx.relationships.map((r) => `- ${r.otherId}: trust ${r.trust}, friendship ${r.friendship}`).join("\n") || "- (none)";
   const people = (ctx.neighbors ?? []).map((n) => {
@@ -34,13 +41,16 @@ export function buildMessages(ctx: DecisionContext): ChatMessage[] {
         ? ` recently chose to ${ctx.orgContext.latestAction}${ctx.orgContext.latestReasoning ? `: ${ctx.orgContext.latestReasoning}` : ""}.`
         : ".")
     : "";
-  const system = `You are ${ctx.citizen.name}, a ${ctx.citizen.occupation}. Decide what THIS person would actually do, in character — not the objectively optimal move.
+  const system = `You are ${ctx.citizen.name}, a ${ctx.citizen.occupation}. Decide what THIS person would actually do, in character — not the objectively optimal move.${directives ? `
+A sudden, intrusive compulsion has seized you this turn — you CANNOT ignore it (see "Compelling you right now"). Let it decisively drive your choice, even if it breaks from your usual habits or your standing goal.` : ""}
 Allowed actions: ${ctx.availableActions.join(", ")}.
 ${SCHEMA}`;
   const user = `Identity: ${ctx.citizen.name}, age ${ctx.citizen.age}. Traits: ${traits}.
 Goal: ${ctx.goal?.description ?? "(none)"}.
 World: day ${ctx.worldState.day}. ${ctx.worldState.headline}.
-Relevant memories:
+${directives ? `Compelling you right now (you cannot ignore this — act on it this turn):
+${directives}
+` : ""}Relevant memories:
 ${mems}
 Beliefs:
 ${beliefs}
