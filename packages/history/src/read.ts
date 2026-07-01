@@ -1,5 +1,5 @@
 import { loadWorldEvents, type Executor } from "./append";
-import { eventKind, type CognitiveTransition, type Genesis, type Hash } from "./types";
+import { eventKind, type CognitiveTransition, type Genesis, type Hash, type HistoryEvent } from "./types";
 
 /** The world's Genesis event (chain root), or null if the epoch is not yet established. */
 export async function loadGenesis(tx: Executor, worldId: string): Promise<Genesis | null> {
@@ -24,6 +24,12 @@ export async function loadTransition(
       return { transition: ct, eventHash: r.eventHash, parentHash: r.parentHash };
   }
   return null;
+}
+
+/** All non-Genesis world events for a world, in seq order (the fold input after the baseline). */
+export async function loadWorldDeltas(tx: Executor, worldId: string): Promise<HistoryEvent[]> {
+  const rows = await loadWorldEvents(tx, worldId);
+  return rows.map((r) => r.event).filter((e) => eventKind(e) !== "Genesis");
 }
 
 /** The most recent 0G anchor for a tick, or null if it was never anchored (Track H). */
