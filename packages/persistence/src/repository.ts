@@ -76,6 +76,10 @@ export class WorldRepository {
         const dayR = await client.query("SELECT day FROM world_state WHERE id = 1");
         const tickId = Number(dayR.rows[0]?.day ?? 0);
         await append(client, buildWealthDelta({ worldId, tickId, actor: citizenId, delta: actual, decisionId }));
+        const { assertFaithful } = await import("@civ/history/src/enforce");
+        const check = await client.query("SELECT wealth FROM citizens WHERE id = $1", [citizenId]);
+        assertFaithful("Economic", Number(check.rows[0].wealth) === before + actual,
+          { citizenId, before, actual, now: Number(check.rows[0].wealth) });
       }
       await client.query("COMMIT");
     } catch (err) { await client.query("ROLLBACK"); throw err; }
