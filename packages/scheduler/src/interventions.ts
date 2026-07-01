@@ -14,8 +14,13 @@ export interface DrainDeps {
   markFailed(id: string): Promise<void>;
 }
 
-export async function drainInterventions(deps: DrainDeps, day: number): Promise<{ applied: number; failed: number }> {
+export async function drainInterventions(deps: DrainDeps, day: number): Promise<{ applied: number; failed: number; targets: string[] }> {
   let applied = 0, failed = 0;
+  // Citizens named by a just-applied whisper/dilemma. The caller force-ticks
+  // these THIS day so the intervention lands on the target's very next tick
+  // instead of waiting for their tier cadence to bring them up (tier-2 = every
+  // 3 days, tier-1 = every 7) — which made a single forced tick look inert.
+  const targets = new Set<string>();
   for (const iv of await deps.pending()) {
     const applier =
       iv.type === "whisper" ? deps.applyWhisper :
@@ -26,6 +31,9 @@ export async function drainInterventions(deps: DrainDeps, day: number): Promise<
     if (!applier) continue; // unknown types left pending for later sub-projects
     try {
       await applier(iv, day);
+      if ((iv.type === "whisper" || iv.type === "dilemma") && iv.targetCitizenId) {
+        targets.add(iv.targetCitizenId);
+      }
       try {
         await deps.markApplied(iv.id, day);
         applied++;
@@ -43,7 +51,7 @@ export async function drainInterventions(deps: DrainDeps, day: number): Promise<
       }
     }
   }
-  return { applied, failed };
+  return { applied, failed, targets: [...targets] };
 }
 
 export function makeWhisperApplier(
