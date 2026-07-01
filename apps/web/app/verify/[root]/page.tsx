@@ -31,6 +31,8 @@ export default async function VerifyPage({ params }: { params: { root: string } 
         <p className="proof-page-sub">
           This record was pulled from 0G Storage by its root hash alone — no private key, no
           trust in the operator. The same check runs anywhere, against the public network.
+          Outcome registries score an agent&rsquo;s track record; this is the other half —
+          the reasoning itself, Memory → Belief → Decision, recovered and recomputable.
         </p>
       </header>
 
