@@ -10,7 +10,10 @@ export default async function ExplainPage({
   params, searchParams,
 }: { params: { citizen: string; tick: string }; searchParams: { world?: string } }) {
   const world = searchParams.world ?? "default";
-  const view = await buildExplainView(getPool(), world, params.citizen, Number(params.tick));
+  const rawView = await buildExplainView(getPool(), world, params.citizen, Number(params.tick));
+  const refused: { refused: "pre-epoch"; epochId: string } | null =
+    rawView && "refused" in rawView ? rawView : null;
+  const view = rawView && !("refused" in rawView) ? rawView : null;
 
   return (
     <main className="board">
@@ -21,7 +24,14 @@ export default async function ExplainPage({
         </p>
       </header>
 
-      {view ? (
+      {refused ? (
+        <section className="cz-section">
+          <p className="board-empty-body">
+            Historical replay unavailable — authenticated history for world{" "}
+            <span className="mono">{world}</span> begins at <span className="mono">{refused.epochId}</span>.
+          </p>
+        </section>
+      ) : view ? (
         <section className="cz-section panel">
           <ExplainPanel view={view} />
         </section>

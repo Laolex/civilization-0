@@ -26,6 +26,13 @@ export async function loadTransition(
   return null;
 }
 
+/** The earliest tick for which a non-Genesis event exists (the authenticated cognitive boundary). */
+export async function loadEpochStartTick(tx: Executor, worldId: string): Promise<number | null> {
+  const r = await tx.query(
+    `SELECT MIN(tick_id) AS t FROM history_events WHERE world_id = $1 AND kind <> 'Genesis'`, [worldId]);
+  return r.rows[0]?.t == null ? null : Number(r.rows[0].t);
+}
+
 /** All non-Genesis world events for a world, in seq order (the fold input after the baseline). */
 export async function loadWorldDeltas(tx: Executor, worldId: string): Promise<HistoryEvent[]> {
   const rows = await loadWorldEvents(tx, worldId);

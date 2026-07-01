@@ -15,6 +15,10 @@ async function main() {
     process.exit(2);
   }
   const view = await buildExplainView(getPool(), world, citizen, Number(tick));
+  if (view && "refused" in view) {
+    console.log(`Historical replay unavailable.\nAuthenticated history begins: ${view.epochId}`);
+    process.exit(0);
+  }
   if (!view) {
     console.error(`no authenticated transition for citizen=${citizen} tick=${tick} world=${world}`);
     process.exit(1);
