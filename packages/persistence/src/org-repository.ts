@@ -43,6 +43,47 @@ export class OrgRepository {
     return { org, members: await this.listMemberships(orgId) };
   }
 
+  async createOrgCoupled(o: Organization, worldId: string, tickId: number, decisionId: string | null): Promise<void> {
+    const { append } = await import("@civ/history/src/append");
+    const { ensureEpoch } = await import("@civ/history/src/genesis");
+    const { buildOrganizationDelta } = await import("@civ/history/src/deltas");
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await ensureEpoch(client, worldId);
+      await client.query(
+        `INSERT INTO organizations (id,name,kind,founder_id,treasury,reputation,goal,created_day)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+        [o.id, o.name, o.kind, o.founderId, o.treasury, o.reputation, o.goal, o.createdDay]);
+      await client.query(
+        `INSERT INTO memberships (org_id,citizen_id,role,joined_day) VALUES ($1,$2,'founder',$3)
+         ON CONFLICT (org_id,citizen_id) DO NOTHING`, [o.id, o.founderId, o.createdDay]);
+      await append(client, buildOrganizationDelta({ worldId, tickId, op: "founded", orgId: o.id,
+        founderId: o.founderId, citizenId: o.founderId, role: "founder", decisionId }));
+      await client.query("COMMIT");
+    } catch (err) { await client.query("ROLLBACK"); throw err; }
+    finally { client.release(); }
+  }
+
+  async addMembershipCoupled(m: Membership, worldId: string, tickId: number, decisionId: string | null): Promise<void> {
+    const { append } = await import("@civ/history/src/append");
+    const { ensureEpoch } = await import("@civ/history/src/genesis");
+    const { buildOrganizationDelta } = await import("@civ/history/src/deltas");
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await ensureEpoch(client, worldId);
+      await client.query(
+        `INSERT INTO memberships (org_id,citizen_id,role,joined_day) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (org_id,citizen_id) DO UPDATE SET role=$3,joined_day=$4`,
+        [m.orgId, m.citizenId, m.role, m.joinedDay]);
+      await append(client, buildOrganizationDelta({ worldId, tickId, op: "member_added", orgId: m.orgId,
+        citizenId: m.citizenId, role: m.role, decisionId }));
+      await client.query("COMMIT");
+    } catch (err) { await client.query("ROLLBACK"); throw err; }
+    finally { client.release(); }
+  }
+
   async persistOrgTick(orgId: string, event: WorldEvent, trace: DecisionTrace, treasuryDelta = 0): Promise<void> {
     const client = await this.pool.connect();
     try {
