@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { fold, worldStateKey } from "./reduce";
-import { GENESIS_PARENT, SCHEMA_VERSION, type CognitiveTransition } from "./index";
+import { fold, worldStateKey, worldFold } from "./reduce";
+import { GENESIS_PARENT, SCHEMA_VERSION, type CognitiveTransition,
+  type Genesis, type WealthDelta, type RelationshipDelta, type OrganizationDelta, type HistoryEvent } from "./index";
 
 function ct(over: Partial<CognitiveTransition> & { tickId: number; actor: string; action: string }): CognitiveTransition {
   return {
@@ -42,10 +43,6 @@ describe("worldStateKey", () => {
     expect(() => worldStateKey("w\x1F1", 1, "c1")).toThrow(/U\+001F/);
   });
 });
-
-import { worldFold } from "./reduce";
-import { GENESIS_PARENT, SCHEMA_VERSION } from "./index";
-import type { Genesis, WealthDelta, RelationshipDelta, OrganizationDelta, HistoryEvent } from "./index";
 
 const H = (id: string) => ({ eventId: id, parentHash: GENESIS_PARENT, worldId: "w1", tickId: 1,
   engineVersion: "t", schemaVersion: SCHEMA_VERSION, timestamp: "2026-06-30T00:00:00.000Z" });
