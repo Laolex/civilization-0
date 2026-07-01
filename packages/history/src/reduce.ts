@@ -26,7 +26,12 @@ export function fold(transitions: CognitiveTransition[]): WorldState {
   return { latest };
 }
 
-const relKey = (a: string, b: string) => (a < b ? `${a}\x1F${b}` : `${b}\x1F${a}`);
+// Relationships are DIRECTIONAL: the legacy `relationships` table stores (citizen_id, other_id)
+// as independent rows, so ada→marcus and marcus→ada are distinct facts with distinct values.
+// captureGenesisFacts reads them directionally (a=citizen_id, b=other_id); the fold must match,
+// keying by the ordered pair (NOT a sorted/canonical pair, which would collapse the two directions
+// last-writer-wins and make Proof B report spurious drift on a clean world).
+const relKey = (a: string, b: string) => `${a}\x1F${b}`;
 
 /** Reconstruct WorldFacts = genesis baseline ⊕ Σ deltas (Invariant #6 — this is the audited semantics). */
 export function worldFold(genesis: Genesis, events: HistoryEvent[]): WorldFacts {
@@ -47,7 +52,7 @@ export function worldFold(genesis: Genesis, events: HistoryEvent[]): WorldFacts 
       case "RelationshipDelta": {
         const r = e as RelationshipDelta;
         const k = relKey(r.a, r.b);
-        const cur = rels.get(k) ?? { a: r.a < r.b ? r.a : r.b, b: r.a < r.b ? r.b : r.a, trust: 0, friendship: 0, influence: 0 };
+        const cur = rels.get(k) ?? { a: r.a, b: r.b, trust: 0, friendship: 0, influence: 0 };
         cur[r.field] = cur[r.field] + r.delta;
         rels.set(k, cur);
         break;

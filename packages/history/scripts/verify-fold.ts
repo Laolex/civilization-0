@@ -3,7 +3,8 @@ import { proofB } from "../src/audit";
 
 async function main() {
   const args = process.argv.slice(2);
-  const world = args[args.indexOf("--world") + 1] ?? "default";
+  const i = args.indexOf("--world");
+  const world = i >= 0 ? args[i + 1] ?? "default" : "default";
   const r = await proofB(getPool(), world);
   console.log(r.ok ? `fold(genesis ⊕ events) == legacy ✓  (world ${world})`
     : `fold MISMATCH ✗  (world ${world})\n${JSON.stringify(r.mismatches, null, 2)}`);

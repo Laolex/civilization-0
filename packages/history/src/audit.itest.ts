@@ -12,6 +12,7 @@ describe("Proof B — historical completeness", () => {
   beforeAll(async () => { await migrate(); });
   afterEach(async () => {
     await getPool().query("DELETE FROM history_events WHERE world_id = 'wb'");
+    await getPool().query("DELETE FROM relationships WHERE citizen_id IN (SELECT id FROM citizens WHERE world_id='wb')");
     await getPool().query("DELETE FROM citizens WHERE world_id = 'wb'");
   });
   afterAll(async () => { await closePool(); });
@@ -25,6 +26,25 @@ describe("Proof B — historical completeness", () => {
     expect(r.mismatches).toEqual([]);
     const cov = await coverage(getPool(), "wb");
     expect(cov.Economic).toBe(1);
+  });
+
+  it("reproduces BOTH directions of an asymmetric relationship pair (B1 regression)", async () => {
+    // Legacy relationships are directional: c1→c2 and c2→c1 are independent rows with different
+    // values. A canonical/undirected fold key would collapse them last-writer-wins and report
+    // spurious Relational drift on this clean, zero-delta world (coverage 0.5 instead of 1).
+    await seed("c1", 100);
+    await seed("c2", 100);
+    await getPool().query(
+      `INSERT INTO relationships (citizen_id,other_id,trust,friendship,influence)
+       VALUES ('c1','c2',65,55,70),('c2','c1',70,50,60)
+       ON CONFLICT (citizen_id,other_id) DO UPDATE
+         SET trust=EXCLUDED.trust, friendship=EXCLUDED.friendship, influence=EXCLUDED.influence`);
+    await ensureEpoch(getPool(), "wb"); // genesis captures both directional rows
+    const r = await proofB(getPool(), "wb");
+    expect(r.ok).toBe(true);
+    expect(r.mismatches).toEqual([]);
+    const cov = await coverage(getPool(), "wb");
+    expect(cov.Relational).toBe(1);
   });
 
   it("detects drift when legacy is mutated without a delta event", async () => {

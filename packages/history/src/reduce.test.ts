@@ -78,16 +78,18 @@ describe("worldFold", () => {
     expect(worldFold(genesis, evs).wealth.find((w) => w.actor === "c1")?.wealth).toBe(100);
   });
 
-  it("applies RelationshipDeltas with canonical pair ordering and accumulates opposite orderings", () => {
+  it("keeps opposite RelationshipDelta orderings as DISTINCT directional facts (c2→c3 ≠ c3→c2)", () => {
+    // The legacy relationships table is directional: (citizen_id, other_id) rows are independent,
+    // so c2→c3 and c3→c2 are separate facts and must NOT be collapsed/accumulated by the fold.
     const evs: HistoryEvent[] = [
       { kind: "RelationshipDelta", header: H("r1"), a: "c2", b: "c3", field: "trust", delta: 10, decisionId: "d1" } as RelationshipDelta,
       { kind: "RelationshipDelta", header: H("r2"), a: "c3", b: "c2", field: "trust", delta: 5, decisionId: "d2" } as RelationshipDelta,
     ];
     const facts = worldFold(genesis, evs);
-    const rel = facts.relationships.find((r) => (r.a === "c2" && r.b === "c3") || (r.a === "c3" && r.b === "c2"));
-    expect(rel).toBeDefined();
-    expect(rel?.trust).toBe(15); // 10 + 5, accumulated
-    expect(rel?.a).toBe("c2"); // canonical ordering (a < b)
-    expect(rel?.b).toBe("c3");
+    const fwd = facts.relationships.find((r) => r.a === "c2" && r.b === "c3");
+    const rev = facts.relationships.find((r) => r.a === "c3" && r.b === "c2");
+    expect(fwd?.trust).toBe(10); // c2→c3 accumulates only its own direction
+    expect(rev?.trust).toBe(5);  // c3→c2 is a separate fact
+    expect(facts.relationships.filter((r) => (r.a === "c2" && r.b === "c3") || (r.a === "c3" && r.b === "c2")).length).toBe(2);
   });
 });

@@ -15,8 +15,9 @@ export async function civState(tx: Executor, worldId: string, tick: number): Pro
 
 async function main() {
   const args = process.argv.slice(2);
-  const world = args[args.indexOf("--world") + 1] ?? "default";
-  const tick = Number(args[args.indexOf("--tick") + 1] ?? "0");
+  const flag = (name: string, def: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] ?? def : def; };
+  const world = flag("--world", "default");
+  const tick = Number(flag("--tick", "0"));
   const out = await civState(getPool(), world, tick);
   if (out.atEpochBaseline) console.log(`World state before the historical boundary is the verified baseline.\nEarliest authenticated state: ${out.epochId}`);
   console.log(JSON.stringify(out.facts, null, 2));

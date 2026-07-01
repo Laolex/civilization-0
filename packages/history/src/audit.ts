@@ -22,7 +22,7 @@ export async function proofB(tx: Executor, worldId: string): Promise<{ ok: boole
   for (const l of legacy.wealth) if ((fW.get(l.actor) ?? 0) !== l.wealth)
     mismatches.push({ dim: "Economic", key: l.actor, folded: fW.get(l.actor), legacy: l.wealth });
 
-  const relK = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const relK = (a: string, b: string) => `${a}|${b}`; // directional: legacy rows are (citizen_id, other_id)
   const fR = new Map(folded.relationships.map((r) => [relK(r.a, r.b), r]));
   for (const l of legacy.relationships) {
     const f = fR.get(relK(l.a, l.b));
@@ -50,7 +50,7 @@ export async function coverage(tx: Executor, worldId: string): Promise<Cov> {
   const frac = (total: number, ok: number) => (total === 0 ? 1 : ok / total);
   const fW = new Map(folded.wealth.map((w) => [w.actor, w.wealth]));
   const econOk = legacy.wealth.filter((l) => (fW.get(l.actor) ?? 0) === l.wealth).length;
-  const relK = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const relK = (a: string, b: string) => `${a}|${b}`; // directional: legacy rows are (citizen_id, other_id)
   const fR = new Map(folded.relationships.map((r) => [relK(r.a, r.b), r]));
   const relOk = legacy.relationships.filter((l) => {
     const f = fR.get(relK(l.a, l.b));
